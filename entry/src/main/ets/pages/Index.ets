@@ -3,6 +3,8 @@ import { rcp } from '@kit.RemoteCommunicationKit';
 import { picker } from '@kit.CoreFileKit';
 import fs from '@ohos.file.fs';
 import { http } from '@kit.NetworkKit';
+import { Button, display } from '@kit.ArkUI'
+
 let uploadUrl: string = 'http://192.xx.xxx.xx:8080/upload';
 function example01(): string {
   let uri = '';
@@ -48,41 +50,52 @@ function testRcpMultiPartUpload() {
 
 @Entry
 @Component struct Index {
-  @State message: string = '按此选择照片';
+  @State message: string = '点此选择照片';
   private settings: RenderingContextSettings = new RenderingContextSettings(true)
   private context: CanvasRenderingContext2D = new CanvasRenderingContext2D(this.settings)
-  private offCanvas: OffscreenCanvas = new OffscreenCanvas(600, 600)
+  private offCanvas: OffscreenCanvas = new OffscreenCanvas(600,600)
   private img: ImageBitmap = new ImageBitmap("/resources/base/media/2.png")
 
   build() {
 
       Column() {
-
-        Text(this.message).fontSize(50).fontWeight(FontWeight.Bold)
-          .onClick(() => {
-            testRcpMultiPartUpload();
-          })
-
-
-
-
-        Flex({ direction: FlexDirection.Column, alignItems: ItemAlign.Center, justifyContent: FlexAlign.Center }) {
+        // , justifyContent: FlexAlign.Center
+        Flex({ direction: FlexDirection.Column, alignItems: ItemAlign.Center}) {
           Canvas(this.context)
             .width('100%')
             .height('100%')
             .backgroundColor('#ffffff')
             .onReady(() => {
               let offContext = this.offCanvas.getContext("2d", this.settings)
+
+              // //获取当前屏幕的宽高
+              // const windowWidth = display.getDefaultDisplaySync().width
+              // const windowHeight = display.getDefaultDisplaySync().height
+              // // 获取图片的原始宽高
+              // const imgWidth = this.img.width;
+              // const imgHeight = this.img.height;
+              // // 计算自适应的宽高
+              // let drawWidth = windowWidth;
+              // let drawHeight = (imgHeight / imgWidth) * windowWidth;
+              //
+              // if (drawHeight > windowHeight) {
+              //   drawHeight = windowHeight;
+              //   drawWidth = (imgWidth / imgHeight) * windowHeight;
+              // }
+              // this.offCanvas.width = drawWidth;
+              // this.offCanvas.height = drawHeight;
+              //
+              // // 在离屏Canvas上绘制自适应的图片
+              // offContext.drawImage(this.img, 0, 0, drawWidth, drawHeight);
+              // let image = this.offCanvas.transferToImageBitmap();
+              // this.context.clearRect(0, 0, drawWidth, drawHeight);
+              // this.context.drawImage(image, 0, 0,drawWidth, drawHeight)
+
               // 使用drawImage接口将图片画在（0，0）为起点，宽高130的区域
-              offContext.drawImage(this.img, 0, 0);
-              // 使用getImageData接口，获得canvas组件区域中，（50，50）为起点，宽高130范围内的绘制内容
-              let imagedata = offContext.getImageData(50, 50, 130, 130);
-              // 使用putImageData接口将得到的ImageData画在起点为（150， 150）的区域中
-              //offContext.putImageData(imagedata, 150, 150);
+              offContext.drawImage(this.img, 0, 0,400,400);
               // 将离屏绘制的内容画到canvas组件上
               let image = this.offCanvas.transferToImageBitmap();
               this.context.transferFromImageBitmap(image);
-
 
               //绘制矩形
               this.context.beginPath();
@@ -98,8 +111,22 @@ function testRcpMultiPartUpload() {
               this.context.stroke();
             })
         }
+        .height('70%')
+        .margin({top:50,left:5,right:5})
+        .padding({bottom:20})
+
+        // Text(this.message).fontSize(50).fontWeight(FontWeight.Bold)
+        //   .onClick(() => {
+        //     testRcpMultiPartUpload();
+        //   })
+
+        Button(this.message, { type: ButtonType.Capsule })
+          .fontSize(20)
+          .margin({})
+          .onClick(() => {
+            testRcpMultiPartUpload();
+          })
 
       }.width('100%')
-
-  }
+    }
 }
