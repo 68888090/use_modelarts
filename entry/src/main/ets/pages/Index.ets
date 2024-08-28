@@ -53,7 +53,7 @@ function testRcpMultiPartUpload() {
   @State message: string = '点此选择照片';
   private settings: RenderingContextSettings = new RenderingContextSettings(true)
   private context: CanvasRenderingContext2D = new CanvasRenderingContext2D(this.settings)
-  private offCanvas: OffscreenCanvas = new OffscreenCanvas(600,600)
+  private offCanvas: OffscreenCanvas = new OffscreenCanvas(400,600)
   private img: ImageBitmap = new ImageBitmap("/resources/base/media/2.png")
 
   build() {
@@ -68,35 +68,20 @@ function testRcpMultiPartUpload() {
             .onReady(() => {
               let offContext = this.offCanvas.getContext("2d", this.settings)
 
-              // //获取当前屏幕的宽高
-              // const windowWidth = display.getDefaultDisplaySync().width
-              // const windowHeight = display.getDefaultDisplaySync().height
-              // // 获取图片的原始宽高
-              // const imgWidth = this.img.width;
-              // const imgHeight = this.img.height;
-              // // 计算自适应的宽高
-              // let drawWidth = windowWidth;
-              // let drawHeight = (imgHeight / imgWidth) * windowWidth;
-              //
-              // if (drawHeight > windowHeight) {
-              //   drawHeight = windowHeight;
-              //   drawWidth = (imgWidth / imgHeight) * windowHeight;
-              // }
-              // this.offCanvas.width = drawWidth;
-              // this.offCanvas.height = drawHeight;
-              //
-              // // 在离屏Canvas上绘制自适应的图片
-              // offContext.drawImage(this.img, 0, 0, drawWidth, drawHeight);
-              // let image = this.offCanvas.transferToImageBitmap();
-              // this.context.clearRect(0, 0, drawWidth, drawHeight);
-              // this.context.drawImage(image, 0, 0,drawWidth, drawHeight)
+              // 获取图片的原始宽高
+              const imgWidth = this.img.width;
+              const imgHeight = this.img.height;
+              // 计算自适应的宽高
+              let drawWidth = 400;
+              let drawHeight = (imgHeight / imgWidth) * drawWidth;
 
-              // 使用drawImage接口将图片画在（0，0）为起点，宽高130的区域
-              offContext.drawImage(this.img, 0, 0,400,400);
+              // 使用drawImage接口将图片画在（0，0）为起点，宽400，高自适应的区域
+              offContext.drawImage(this.img, 0, 0,drawWidth,drawHeight);
               // 将离屏绘制的内容画到canvas组件上
               let image = this.offCanvas.transferToImageBitmap();
               this.context.transferFromImageBitmap(image);
 
+              //图形区域是drawWidth*drawHeight的矩形
               //绘制矩形
               this.context.beginPath();
               this.context.rect(100, 50, 100, 100);
@@ -114,11 +99,6 @@ function testRcpMultiPartUpload() {
         .height('70%')
         .margin({top:50,left:5,right:5})
         .padding({bottom:20})
-
-        // Text(this.message).fontSize(50).fontWeight(FontWeight.Bold)
-        //   .onClick(() => {
-        //     testRcpMultiPartUpload();
-        //   })
 
         Button(this.message, { type: ButtonType.Capsule })
           .fontSize(20)
