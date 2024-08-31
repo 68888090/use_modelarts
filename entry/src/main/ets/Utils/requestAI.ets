@@ -2,6 +2,8 @@ import { http } from '@kit.NetworkKit';
 import { BusinessError, UploadResponse } from '@kit.BasicServicesKit';
 import fs from '@ohos.file.fs';
 import request from '@ohos.request';
+import promptAction from '@ohos.promptAction';
+
 
 export interface DetectionResponse {
   detection_classes: Array<string>;
@@ -10,6 +12,12 @@ export interface DetectionResponse {
 }
 
 
+interface GeneratedObjectLiteralInterface_2 {
+  name: string;
+  ContentType: string;
+  filePath: string;
+}
+
 export class RequestAI {
 
   url:string =''
@@ -17,15 +25,14 @@ export class RequestAI {
   filePath:string=''
   fileName:string = ''
   copyFilePath:string = ''
-  httpRequest = http.createHttp()
+  imageuri:string = ''
 
-  constructor (url: string, filePath: string,appCode:string) {
+
+  constructor (filePath: string,url = "https://infer-app-modelarts-cn-southwest-2.myhuaweicloud.com/v1/infers/4aef5d61-24cc-41fd-b1d6-ef307e9852ca",
+    appCode="ab4be939eff64a4a9edb18898ee2277f3c0c97d2c21e420b83d87ef54e3b9113") {
     this.url = url
     this.appCode = appCode
     this.filePath = filePath
-    this.httpRequest.on('headersReceive', (header) => {
-      console.info('header: ' + JSON.stringify(header));
-    });
     const context = getContext(this)
     const fileType = 'jpg'
     // （以时间戳）生成一个新的文件名
@@ -33,46 +40,79 @@ export class RequestAI {
     // 通过缓存路径+文件名 拼接出完整的路径
      this.copyFilePath = context.cacheDir + '/' + this.fileName
     // 将文件 拷贝到 临时目录
+
+
     const file = fs.openSync(this.filePath, fs.OpenMode.READ_ONLY)
-    fs.copyFileSync(file.fd, this.copyFilePath)
+
+
+    let fileTemp = fs.openSync(getContext().filesDir+file.name,fs.OpenMode.READ_WRITE|fs.OpenMode.CREATE);
+    this.imageuri  = fileTemp.path
+
+    fs.copyFileSync(file.fd, fileTemp.fd)
+    fs.closeSync(file)
+    fs.closeSync(fileTemp)
   }
 
-  async PostAI(): Promise<DetectionResponse> {
-    return new Promise<DetectionResponse>((resolve, reject) => {
-      request.uploadFile(getContext(), {
-        method: 'POST',
-        url: this.url,
-        header: {
-          'Content-Type': 'multipart/form-data',
-          'X-Apig-AppCode': this.appCode
-        },
-        files: [{ filename: this.fileName, type: 'jpg', name: 'img', uri: this.copyFilePath }],
-        data: []
-      }).then(res => {
+  async PostAI(){
 
-        // 监听上传进度
-        res.on('progress', (uploaderSize, totalSize) => {
-          if (uploaderSize === totalSize) {
-            AlertDialog.show({ message: "上传成功" });
-          }
-        });
+     try{
+       let httpRequest = http.createHttp()
+       httpRequest.on('headersReceive', (header) => {
+         console.info('header: ' + JSON.stringify(header));
+       });
+       promptAction.showToast({
+         message: '数据传输中！'//弹窗内容
+       })
+       httpRequest.request(
+         this.url,
+         {
+           method:http.RequestMethod.POST,
+           header:{
+             'Content-Type':'multipart/form-data',
+             'X-Apig-AppCode':this.appCode
+           },
+           expectDataType:http.HttpDataType.STRING,
+           multiFormDataList:[{
+             name:'file',
+             contentType:'image/jpg',
+             filePath:this.imageuri,
+             remoteFileName: '200.png'
+           }],
 
-        // 监听上传成功后服务器返回的响应头信息
-        res.on('headerReceive', (value) => {
-          try {
-            let uploadRes = value as UploadResponse;
-            let response = JSON.parse(uploadRes.data) as DetectionResponse;
-            resolve(response);  // 返回解析后的 JSON 数据
-          } catch (error) {
-            reject(new Error("Failed to parse JSON response."));
-          }
-        });
 
-      }).catch((err: BusinessError) => {
-        console.error(`Failed to upload image. Code is ${err.code}, message is ${err.message}`);
-        reject(err);
-      });
-    });
-  }
+         },(err:BusinessError,data:http.HttpResponse)=>{
+           if(!err){
+             promptAction.showToast({
+               message: '数据传输成功'//弹窗内容
+             })
+             // data.result为HTTP响应内容，可根据业务需要进行解析
+             console.error('Result:' + data.result);
+             console.error('code:' + JSON.stringify(data.responseCode));
+             // data.header为HTTP响应头，可根据业务需要进行解析
+             console.error('header:' + JSON.stringify(data.header));
+             console.error('cookies:' + JSON.stringify(data.cookies)); //
+
+             console.log("test:上传结束")
+
+             httpRequest.destroy()
+           } else {
+             console.error('error:' + JSON.stringify(err));
+             // 取消订阅HTTP响应头事件
+             httpRequest.off('headersReceive');
+             // 当该请求使用完毕时，调用destroy方法主动销毁
+             httpRequest.destroy();
+           }
+
+       }
+
+       )
+     }catch (err){
+       console.error(err)
+     }
+    }
+
+
+
+
 
 }

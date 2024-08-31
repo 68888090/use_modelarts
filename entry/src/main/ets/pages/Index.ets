@@ -6,6 +6,11 @@ import { http } from '@kit.NetworkKit';
 import { Button, display } from '@kit.ArkUI'
 import { RequestAI,DetectionResponse} from '../Utils/requestAI'
 import { BusinessError } from '@kit.BasicServicesKit';
+import { Permissions } from '@kit.AbilityKit';
+import PermissionsUtil from '../Utils/PermissionsUtil';
+import { image } from '@kit.ImageKit';
+import { resourceManager } from '@kit.LocalizationKit';
+import { photoAccessHelper } from '@kit.MediaLibraryKit';
 
 let uploadUrl: string = 'http://192.xx.xxx.xx:8080/upload';
 let appCode : string = 'xxx'
@@ -67,11 +72,10 @@ async function example02(): Promise<void> {
     console.log("Selected URI:" + uri);
 
     // 创建requestAI实例
-    let requestAIInstance = new RequestAI(uploadUrl, uri, appCode);
+    let requestAIInstance = new RequestAI(uri);
     // 上传并获取响应数据
     let responseArray = await requestAIInstance.PostAI();
-    responseData = responseArray
-    console.log("服务器返回的数据:", responseArray);
+        console.log("服务器返回的数据:", responseArray);
 
   } catch (err) {
     if ((err as BusinessError).code !== undefined && (err as BusinessError).message !== undefined) {
@@ -96,11 +100,12 @@ function testMarkingData() {
 @Entry
 @Component struct Index {
   @State message: string = '点此选择照片';
+  @State pixelMap:image.PixelMap  | undefined = undefined
   private settings: RenderingContextSettings = new RenderingContextSettings(true)
   private context: CanvasRenderingContext2D = new CanvasRenderingContext2D(this.settings)
   private offCanvas: OffscreenCanvas = new OffscreenCanvas(400,600)
   private img: ImageBitmap = new ImageBitmap("/resources/base/media/2.png")
-
+  private permissions: Array<Permissions> = ['ohos.permission.WRITE_IMAGEVIDEO','ohos.permission.READ_IMAGEVIDEO'];
   build() {
     Column(){
       Flex({ direction: FlexDirection.Column, alignItems: ItemAlign.Center }) {
@@ -147,7 +152,9 @@ function testMarkingData() {
       this.drawAnnotations(responseData,imgWidth,imgHeight,drawWidth,drawHeight);
     }
   }
-
+  async aboutToAppear(): Promise<void> {
+    PermissionsUtil.checkPermissions(this.permissions)
+  }
   //标记信息
   private drawAnnotations(response: DetectionResponse,
     imgWidth:number,imgHeight:number,drawWidth:number,drawHeight:number) {
@@ -236,4 +243,55 @@ function testMarkingData() {
   //
   //     }.width('100%')
   //   }
+  async packingPixelMap2Jpg(pixelMap: PixelMap): Promise<ArrayBuffer> {
+    const imagePackerApi = image.createImagePacker();
+    const packOpts: image.PackingOption = { format: "image/jpeg", quality: 98 };
+    let imageBuffer: ArrayBuffer = new ArrayBuffer(1);
+    try {
+      // 图片压缩或重新打包
+      imageBuffer = await imagePackerApi.packing(pixelMap, packOpts);
+    } catch (err) {
+      console.error(`Invoke packingPixelMap2Jpg failed, err: ${JSON.stringify(err)}`);
+    }
+    return imageBuffer;
+  }
+  async getPixelMapByImage():Promise<image.PixelMap>{
+    const context : Context = getContext(this);
+    // 获取resourceManager资源管理器
+    const resourceMgr : resourceManager.ResourceManager = context.resourceManager;
+    let rawFileDescriptor = await resourceMgr.getRawFd('food.png')
+    const imageSource : image.ImageSource = image.createImageSource(rawFileDescriptor);
+    let decodingOptions : image.DecodingOptions = {
+      editable: true,
+      desiredPixelFormat: 3,
+    }
+    // 创建pixelMap并进行简单的旋转和缩放
+    const pixelMap:image.PixelMap = await imageSource.createPixelMap(decodingOptions)
+    this.pixelMap =  pixelMap
+    return pixelMap;
+  }
+  async  WritePhoto() {
+    console.info('createAssetDemo');
+    let context = getContext(this);
+    let phAccessHelper = photoAccessHelper.getPhotoAccessHelper(context);
+    let photoType: photoAccessHelper.PhotoType = photoAccessHelper.PhotoType.IMAGE;
+    let extension:string = 'png';
+    let options: photoAccessHelper.CreateOptions = {
+      title: 'testPhoto'
+    }
+    let uri = await phAccessHelper.createAsset(photoType, extension, options);
+    // 使用uri打开文件，可以持续写入内容，写入过程不受时间限制
+    let file = await fs.open(uri, fs.OpenMode.READ_WRITE | fs.OpenMode.CREATE);
+    try {
+      const imageBuffer = await this.packingPixelMap2Jpg(this.pixelMap as image.PixelMap)
+
+      // 写到媒体库文件中
+      await fs.write(file.fd, imageBuffer);
+      await fs.close(file.fd);
+      AlertDialog.show({message:'已保存至相册!'});
+    }
+    catch (err) {
+      console.error("error is "+ JSON.stringify(err))
+    }
+  }
 }
