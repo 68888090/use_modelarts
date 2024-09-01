@@ -3,7 +3,7 @@ import { rcp } from '@kit.RemoteCommunicationKit';
 import { picker } from '@kit.CoreFileKit';
 import fs from '@ohos.file.fs';
 import { http } from '@kit.NetworkKit';
-import { Button, display } from '@kit.ArkUI'
+import { Button, display, promptAction } from '@kit.ArkUI'
 import { RequestAI,DetectionResponse} from '../Utils/requestAI'
 import { BusinessError } from '@kit.BasicServicesKit';
 import { Permissions } from '@kit.AbilityKit';
@@ -11,54 +11,11 @@ import PermissionsUtil from '../Utils/PermissionsUtil';
 import { image } from '@kit.ImageKit';
 import { resourceManager } from '@kit.LocalizationKit';
 import { photoAccessHelper } from '@kit.MediaLibraryKit';
+import { responseString} from '../Utils/requestAI'
 
-let uploadUrl: string = 'http://192.xx.xxx.xx:8080/upload';
-let appCode : string = 'xxx'
-
-// function example01(): string {
-//   let uri = '';
-//   let photoViewPicker = new picker.PhotoViewPicker();
-//   let photoSelectOption = new picker.PhotoSelectOptions();
-//   photoSelectOption.MIMEType = picker.PhotoViewMIMETypes.IMAGE_TYPE;
-//   photoViewPicker.select(photoSelectOption).then((photoSelectResult) => {
-//     console.log("photoSelectResult:" + photoSelectResult);
-//     uri = photoSelectResult.photoUris[0];
-//     console.log("uri:" + uri);
-//
-//     // // 创建 RequestAI 实例
-//     // let requestAI = new RequestAI(uploadUrl, uri, appCode);
-//
-//     try {
-//       let resultPhoto = fs.openSync(uri,fs.OpenMode.READ_ONLY);
-//       let resultName = resultPhoto.name;
-//       let fileTemp = fs.openSync(getContext().filesDir+resultPhoto.name,fs.OpenMode.READ_WRITE|fs.OpenMode.CREATE);
-//       let imageUri = fileTemp.path;
-//       fs.copyFileSync(resultPhoto.fd,fileTemp.fd);
-//       fs.closeSync(resultPhoto);
-//       fs.closeSync(fileTemp);
-//       const httpRequest = http.createHttp();
-//       httpRequest.request(uploadUrl,{
-//         method:http.RequestMethod.POST,
-//         header:{ 'Content-Type': 'multipart/form-data', 'Connection':'keep-alive' },
-//         expectDataType:http.HttpDataType.ARRAY_BUFFER,
-//         multiFormDataList: [ { name:'file',
-//           contentType: 'image/jpg',
-//           filePath: imageUri,
-//           remoteFileName:'file.jpg' },
-//         ],
-//       },(err,data) => {
-//         console.log('test:上传结束')
-//         httpRequest.destroy();
-//       } )
-//     } catch (err) {
-//       console.error('fyh:Failed to request the upload. err: ${JSON.stringify(err)}');
-//     } }).catch((err:BusinessError) => {
-//     console.error('Invoke photoViewPicker.select failed, code is ${err.code}, message is ${err.message}');
-//   })
-//   return uri;
-// }
-
-let responseData : DetectionResponse
+let responseStr : string = ""
+let responseData : DetectionResponse|null = null
+let photoUri : string = ""
 
 async function example02(): Promise<void> {
   //打开相册选择器并设置图片选择特性
@@ -69,6 +26,7 @@ async function example02(): Promise<void> {
   try {
     let photoSelectResult = await photoViewPicker.select(photoSelectOption);
     let uri = photoSelectResult.photoUris[0];
+    photoUri = uri
     console.log("Selected URI:" + uri);
 
     // 创建requestAI实例
@@ -76,6 +34,17 @@ async function example02(): Promise<void> {
     // 上传并获取响应数据
     let responseArray = await requestAIInstance.PostAI();
         console.log("服务器返回的数据:", responseArray);
+        //将PostAI返回的字符串数据赋值给当前文件中的全局变量responseStr
+        // responseStr = responseString
+    responseStr = "{\"detection_classes\": [\"Mouse_bite\", \"Mouse_bite\", \"Mouse_bite\", \"Open_circuit\", \"Mouse_bite\", \"Open_circuit\", \"Mouse_bite\", \"Open_circuit\", \"Mouse_bite\", \"Open_circuit\"], \"detection_boxes\": [[578, 646, 604, 672], [559, 609, 584, 640], [407, 264, 424, 303], [1052, 912, 1075, 925], [26, 740, 38, 761], [715, 1351, 743, 1358], [62, 1382, 84, 1397], [714, 1050, 724, 1074], [68, 864, 78, 884], [823, 1099, 834, 1108]], \"detection_scores\": [0.954258, 0.93341, 0.933286, 0.930765, 0.919465, 0.918447, 0.917989, 0.913556, 0.910603, 0.886787]}"
+
+    //解析服务器返回的数据为DetectionResponse
+    try {
+      responseData = JSON.parse(responseStr) as DetectionResponse;
+      console.error("解析后的数据:", responseData.detection_classes[0]);
+    } catch (error) {
+      console.error("解析服务器返回的数据时出错:", error);
+    }
 
   } catch (err) {
     if ((err as BusinessError).code !== undefined && (err as BusinessError).message !== undefined) {
@@ -86,17 +55,6 @@ async function example02(): Promise<void> {
   }
 }
 
-//封装测试函数
-function testRcpMultiPartUpload() {
-  example02();
-}
-
-//已经获取到返回的Detection类型数据responseData，尝试标记效果
-function testMarkingData() {
-
-
-}
-
 @Entry
 @Component struct Index {
   @State message: string = '点此选择照片';
@@ -104,8 +62,9 @@ function testMarkingData() {
   private settings: RenderingContextSettings = new RenderingContextSettings(true)
   private context: CanvasRenderingContext2D = new CanvasRenderingContext2D(this.settings)
   private offCanvas: OffscreenCanvas = new OffscreenCanvas(400,600)
-  private img: ImageBitmap = new ImageBitmap("/resources/base/media/2.png")
+  private img: ImageBitmap|null = null
   private permissions: Array<Permissions> = ['ohos.permission.WRITE_IMAGEVIDEO','ohos.permission.READ_IMAGEVIDEO'];
+
   build() {
     Column(){
       Flex({ direction: FlexDirection.Column, alignItems: ItemAlign.Center }) {
@@ -117,66 +76,101 @@ function testMarkingData() {
             // this.drawImage();
           })
       }
-      .height('70%')
-      .margin({ top: 50, left: 5, right: 5 })
-      .padding({ bottom: 20 });
+      .backgroundColor('red')
+      .height('60%')
+      .margin({ top: 100, bottom: 10, left: 5, right: 5 });
 
       Button(this.message, { type: ButtonType.Capsule })
         .fontSize(20)
         .margin({})
         .onClick(() => {
-          testRcpMultiPartUpload();
+          this.uploadAndDrawImage();
         });
     }.width('100%')
   }
 
-  //显示图片
-  private async drawImage() {
-    let offContext = this.offCanvas.getContext("2d", this.settings);
+  // 延迟触发绘图
+  async uploadAndDrawImage() {
+    await example02();
 
-    // 获取图片的原始宽高
-    const imgWidth = this.img.width;
-    const imgHeight = this.img.height;
-    // 计算自适应的宽高
-    let drawWidth = 400;
-    let drawHeight = (imgHeight / imgWidth) * drawWidth;
+    if (photoUri) {  // 假设 photoUri 是图片的 URI
 
-    // 使用drawImage接口将图片画在（0，0）为起点，宽400，高自适应的区域
-    offContext.drawImage(this.img, 0, 0, drawWidth, drawHeight);
-    // 将离屏绘制的内容画到canvas组件上
-    let image = this.offCanvas.transferToImageBitmap();
-    this.context.transferFromImageBitmap(image);
+      //每次绘制图片前先清空画布
+      if (this.context) {
+        this.context.clearRect(0, 0, this.context.width, this.context.height);
+      }
 
-    // 绘制标注
-    if (responseData) {
-      this.drawAnnotations(responseData,imgWidth,imgHeight,drawWidth,drawHeight);
+      this.img = new ImageBitmap(photoUri)
+      await this.drawImage();  // 触发绘图
+
+      if (responseData) {// 绘制标注
+        this.drawAnnotations(responseData,1720,400);
+      }else{
+        promptAction.showToast({
+          message: '没有可用的DetectResponse类型数据'
+        })
+      }
+    }else{
+      console.error('不存在有效的图片地址')
     }
   }
+
+  //显示图片
+  private async drawImage() {
+    if(this.img){
+      let offContext = this.offCanvas.getContext("2d", this.settings);
+
+      // 获取图片的原始宽高
+      let imgWidth = 1720;
+      let imgHeight = 1132;
+      // 计算自适应的宽高
+      let drawWidth = 400;
+      let drawHeight = (imgHeight / imgWidth) * drawWidth;
+
+      console.error("自动获取的图片宽高为："+this.img.width+","+this.img.height+",实际为1720，1140")
+      //自动获取的图片宽高为：529.2307692307693,348.3076923076923,实际为1720，1140
+
+      // 使用drawImage接口将图片画在（0，0）为起点，宽400，高自适应的区域
+      offContext.drawImage(this.img, 0, 0, drawWidth, drawHeight);
+      // 将离屏绘制的内容画到canvas组件上
+      let image = this.offCanvas.transferToImageBitmap();
+      this.context.transferFromImageBitmap(image);
+
+    }else{
+      promptAction.showToast({
+        message: '创建图片实例ImageBitmap未成功'
+      })
+    }
+  }
+
   async aboutToAppear(): Promise<void> {
     PermissionsUtil.checkPermissions(this.permissions)
   }
+
   //标记信息
   private drawAnnotations(response: DetectionResponse,
-    imgWidth:number,imgHeight:number,drawWidth:number,drawHeight:number) {
+    imgWidth:number,drawWidth:number) {
 
     // 设置检测框
-    this.context.strokeStyle = 'red';
-    this.context.lineWidth = 2;
+    this.context.strokeStyle = 'green';
+    this.context.lineWidth = 0.5;
     //计算缩放率
-    let ratioX = drawWidth/imgWidth
-    let ratioY = drawHeight/imgHeight
+    let ratio = drawWidth/imgWidth
 
     response.detection_boxes.forEach((box: number[], index: number) => {
-      let x1 = box[0];
-      let y1 = box[1];
-      let x2 = box[2];
-      let y2 = box[3];
+
+      let y1 = box[0];
+      let x1 = box[1];
+      let y2 = box[2];
+      let x2 = box[3];
 
       // 计算实际坐标
-      const rectX = x1 * ratioX;
-      const rectY = y1 * ratioY;
-      const rectWidth = (x2 - x1) * ratioX;
-      const rectHeight = (y2 - y1) * ratioY;
+      let rectX = x1 * ratio;
+      let rectY = y1 * ratio;
+      let rectWidth = (x2 - x1) * ratio;
+      let rectHeight = (y2 - y1) * ratio;
+      let x21 = x2*ratio
+      let y21 = y2*ratio
 
       // 绘制矩形框
       this.context.beginPath();
@@ -184,65 +178,13 @@ function testMarkingData() {
       this.context.stroke();
 
       // 绘制标注文本
-      this.context.fillStyle = 'red';
-      this.context.font = '12px Arial';
-      this.context.fillText(response.detection_classes[index], rectX, rectY);
+      this.context.fillStyle = 'white';
+      this.context.font = '24px Arial';
+      this.context.fillText(response.detection_classes[index]+"("+(response.detection_scores[index]*100).toFixed(0)+"%)",
+        rectX, y21+3);
     });
   }
 
-  // build() {
-  //
-  //     Column() {
-  //       // , justifyContent: FlexAlign.Center
-  //       Flex({ direction: FlexDirection.Column, alignItems: ItemAlign.Center}) {
-  //         Canvas(this.context)
-  //           .width('100%')
-  //           .height('100%')
-  //           .backgroundColor('#ffffff')
-  //           .onReady(() => {
-  //             let offContext = this.offCanvas.getContext("2d", this.settings)
-  //
-  //             // 获取图片的原始宽高
-  //             const imgWidth = this.img.width;
-  //             const imgHeight = this.img.height;
-  //             // 计算自适应的宽高
-  //             let drawWidth = 400;
-  //             let drawHeight = (imgHeight / imgWidth) * drawWidth;
-  //
-  //             // 使用drawImage接口将图片画在（0，0）为起点，宽400，高自适应的区域
-  //             offContext.drawImage(this.img, 0, 0,drawWidth,drawHeight);
-  //             // 将离屏绘制的内容画到canvas组件上
-  //             let image = this.offCanvas.transferToImageBitmap();
-  //             this.context.transferFromImageBitmap(image);
-  //
-  //             //图形区域是drawWidth*drawHeight的矩形
-  //             //绘制矩形
-  //             this.context.beginPath();
-  //             this.context.rect(100, 50, 100, 100);
-  //             this.context.stroke();
-  //             //绘制圆形
-  //             this.context.beginPath();
-  //             this.context.arc(150, 250, 50, 0, 6.28);
-  //             this.context.stroke();
-  //             //绘制椭圆
-  //             this.context.beginPath();
-  //             this.context.ellipse(150, 450, 50, 100, Math.PI * 0.25, Math.PI * 0, Math.PI * 2);
-  //             this.context.stroke();
-  //           })
-  //       }
-  //       .height('70%')
-  //       .margin({top:50,left:5,right:5})
-  //       .padding({bottom:20})
-  //
-  //       Button(this.message, { type: ButtonType.Capsule })
-  //         .fontSize(20)
-  //         .margin({})
-  //         .onClick(() => {
-  //           testRcpMultiPartUpload();
-  //         })
-  //
-  //     }.width('100%')
-  //   }
   async packingPixelMap2Jpg(pixelMap: PixelMap): Promise<ArrayBuffer> {
     const imagePackerApi = image.createImagePacker();
     const packOpts: image.PackingOption = { format: "image/jpeg", quality: 98 };
@@ -255,6 +197,7 @@ function testMarkingData() {
     }
     return imageBuffer;
   }
+
   async getPixelMapByImage():Promise<image.PixelMap>{
     const context : Context = getContext(this);
     // 获取resourceManager资源管理器
@@ -270,6 +213,7 @@ function testMarkingData() {
     this.pixelMap =  pixelMap
     return pixelMap;
   }
+
   async  WritePhoto() {
     console.info('createAssetDemo');
     let context = getContext(this);

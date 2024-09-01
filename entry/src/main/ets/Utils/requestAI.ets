@@ -4,7 +4,6 @@ import fs from '@ohos.file.fs';
 import request from '@ohos.request';
 import promptAction from '@ohos.promptAction';
 
-
 export interface DetectionResponse {
   detection_classes: Array<string>;
   detection_boxes: Array<Array<number>>;
@@ -17,6 +16,8 @@ interface GeneratedObjectLiteralInterface_2 {
   ContentType: string;
   filePath: string;
 }
+
+export let responseString : string
 
 export class RequestAI {
 
@@ -86,6 +87,7 @@ export class RequestAI {
                message: '数据传输成功'//弹窗内容
              })
              // data.result为HTTP响应内容，可根据业务需要进行解析
+            responseString = data.result.toString()
              console.error('Result:' + data.result);
              console.error('code:' + JSON.stringify(data.responseCode));
              // data.header为HTTP响应头，可根据业务需要进行解析
@@ -109,10 +111,5 @@ export class RequestAI {
      }catch (err){
        console.error(err)
      }
-    }
-
-
-
-
-
+  }
 }
