@@ -44,11 +44,7 @@ async function example02(): Promise<void> {
       console.error('Error communicating with AI')
     })
 
-
     console.log("服务器返回的数据:", responseStr);
-    //将PostAI返回的字符串数据赋值给当前文件中的全局变量responseStr
-    // responseStr = responseArray
-    // responseStr = "{\"detection_classes\": [\"Mouse_bite\", \"Mouse_bite\", \"Mouse_bite\", \"Open_circuit\", \"Mouse_bite\", \"Open_circuit\", \"Mouse_bite\", \"Open_circuit\", \"Mouse_bite\", \"Open_circuit\"], \"detection_boxes\": [[578, 646, 604, 672], [559, 609, 584, 640], [407, 264, 424, 303], [1052, 912, 1075, 925], [26, 740, 38, 761], [715, 1351, 743, 1358], [62, 1382, 84, 1397], [714, 1050, 724, 1074], [68, 864, 78, 884], [823, 1099, 834, 1108]], \"detection_scores\": [0.954258, 0.93341, 0.933286, 0.930765, 0.919465, 0.918447, 0.917989, 0.913556, 0.910603, 0.886787]}"
 
     //解析服务器返回的数据为DetectionResponse
     try {
@@ -140,16 +136,11 @@ struct Index {
 
     if (photoUri) { // 假设 photoUri 是图片的 URI
 
-      //每次绘制图片前先清空画布
-      if (this.context) {
-        this.context.clearRect(0, 0, this.context.width, this.context.height);
-      }
-
       this.img = new ImageBitmap(photoUri)
 
       if (await this.drawImage()) {
         if (responseData) { // 绘制标注
-          this.drawAnnotations(responseData, 1720, 400);
+          this.drawAnnotations(responseData, imgWidth, 400);
         } else {
           promptAction.showToast({
             message: '没有可用的DetectResponse类型数据'
@@ -165,15 +156,11 @@ struct Index {
   private async drawImage(): Promise<boolean> {
     if (this.img) {
       let offContext = this.offCanvas.getContext("2d", this.settings);
-
-
+      offContext.clearRect(0,0,400,600)
 
       // 计算自适应的宽高
       let drawWidth = 400;
       let drawHeight = (imgHeight / imgWidth) * drawWidth;
-
-      console.error("自动获取的图片宽高为：" + this.img.width + "," + this.img.height + ",实际为"+imgWidth+','+imgHeight)
-      //自动获取的图片宽高为：529.2307692307693,348.3076923076923,实际为1720，1140
 
       // 使用drawImage接口将图片画在（0，0）为起点，宽400，高自适应的区域
       offContext.drawImage(this.img, 0, 0, drawWidth, drawHeight);
@@ -184,7 +171,6 @@ struct Index {
     } else {
       promptAction.showToast({
         message: '创建图片实例ImageBitmap未成功'
-
       })
       return false
     }
@@ -245,9 +231,6 @@ struct Index {
     }
     return imageBuffer;
   }
-
-
-
 
 }
 
