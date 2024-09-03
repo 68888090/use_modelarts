@@ -21,18 +21,31 @@ let photoUri: string = ""
 let imgWidth = 500;
 let imgHeight = 500;
 
-async function example02(): Promise<void> {
+async function getImageUri():Promise<void>{
   //打开相册选择器并设置图片选择特性
   let photoViewPicker = new picker.PhotoViewPicker();
   let photoSelectOption = new picker.PhotoSelectOptions();
   photoSelectOption.MIMEType = picker.PhotoViewMIMETypes.IMAGE_TYPE;
-
   try {
     let photoSelectResult = await photoViewPicker.select(photoSelectOption);
     let uri = photoSelectResult.photoUris[0];
     photoUri = uri
     console.log("Selected URI:" + uri);
-    // getImageSize(uri)
+
+    //在获得原始像素值之前，获得当前图片长宽比
+    let img :ImageBitmap = new ImageBitmap(uri)
+    imgWidth = img.width
+    imgHeight = img.height
+  }catch (err) {
+      console.error("图片选择过程中出错:", err);
+  }
+}
+
+async function example02(): Promise<void> {
+
+  try {
+    let uri = photoUri
+
     // 创建requestAI实例
     let requestAIInstance = new RequestAI(uri);
     // 上传并获取响应数据
@@ -70,7 +83,7 @@ struct Index {
   @State pixelMap: image.PixelMap | undefined = undefined
   private settings: RenderingContextSettings = new RenderingContextSettings(true)
   private context: CanvasRenderingContext2D = new CanvasRenderingContext2D(this.settings)
-  private offCanvas: OffscreenCanvas = new OffscreenCanvas(400, 600)
+  private offCanvas: OffscreenCanvas = new OffscreenCanvas(375, 600)
   private img: ImageBitmap | null = null
   private permissions: Array<Permissions> = ['ohos.permission.WRITE_IMAGEVIDEO', 'ohos.permission.READ_IMAGEVIDEO'];
   @State scaleValue: number = 1
@@ -132,15 +145,15 @@ struct Index {
 
   // 延迟触发绘图
   async uploadAndDrawImage() {
-    await example02();
+    // 等待前半部分完成
+    await getImageUri();
 
     if (photoUri) { // 假设 photoUri 是图片的 URI
-
       this.img = new ImageBitmap(photoUri)
-
       if (await this.drawImage()) {
+        await example02();
         if (responseData) { // 绘制标注
-          this.drawAnnotations(responseData, imgWidth, 400);
+          this.drawAnnotations(responseData, imgWidth, 370);
         } else {
           promptAction.showToast({
             message: '没有可用的DetectResponse类型数据'
@@ -156,10 +169,10 @@ struct Index {
   private async drawImage(): Promise<boolean> {
     if (this.img) {
       let offContext = this.offCanvas.getContext("2d", this.settings);
-      offContext.clearRect(0,0,400,600)
+      offContext.clearRect(0,0,375,600)
 
       // 计算自适应的宽高
-      let drawWidth = 400;
+      let drawWidth = 375;
       let drawHeight = (imgHeight / imgWidth) * drawWidth;
 
       // 使用drawImage接口将图片画在（0，0）为起点，宽400，高自适应的区域
@@ -186,7 +199,7 @@ struct Index {
 
     // 设置检测框
     this.context.strokeStyle = 'green';
-    this.context.lineWidth = 0.5;
+    this.context.lineWidth = 1;
     //计算缩放率
     let ratio = drawWidth / imgWidth
 
@@ -210,12 +223,11 @@ struct Index {
       this.context.rect(rectX, rectY, rectWidth, rectHeight);
       this.context.stroke();
 
-      // 绘制标注文本
       this.context.fillStyle = 'white';
-      this.context.font = '24px Arial';
+      this.context.font = '40px Arial';
       this.context.fillText(response.detection_classes[index] + "(" +
       (response.detection_scores[index] * 100).toFixed(0) + "%)",
-        rectX, y21 + 3);
+        rectX-40, y21+10);
     });
   }
 
