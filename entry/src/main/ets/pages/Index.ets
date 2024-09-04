@@ -13,6 +13,7 @@ import { resourceManager } from '@kit.LocalizationKit';
 import { photoAccessHelper } from '@kit.MediaLibraryKit';
 import { responseString } from '../Utils/requestAI'
 import { GG } from '../Utils/Pri_data';
+import { media } from '@kit.MediaKit';
 
 let responseStr: string = ""
 let responseData: DetectionResponse | null = null
@@ -79,6 +80,9 @@ async function example02(): Promise<void> {
   }
 }
 
+let displayer =  display.getDefaultDisplaySync()
+
+
 @Entry
 @Component
 struct Index {
@@ -138,17 +142,20 @@ struct Index {
         .onClick(() => {
           if (this.context) {
             this.context.clearRect(0, 0, this.context.width, this.context.height);
+
           }
           this.uploadAndDrawImage();
         });
-      Image(photoUri)
+      Image($r('app.media.1'))
+        .height('30%')
+
     }.width('100%')
+
 
   }
 
   // 延迟触发绘图
   async uploadAndDrawImage() {
-    // 等待前半部分完成
     await getImageUri();
 
     if (photoUri) { // 假设 photoUri 是图片的 URI
@@ -169,7 +176,7 @@ struct Index {
   }
 
   //显示图片
-  private async drawImage(): Promise<boolean> {
+  public  async  drawImage(): Promise<boolean> {
     if (this.img) {
       let offContext = this.offCanvas.getContext("2d", this.settings);
       offContext.clearRect(0,0,375,600)
@@ -259,6 +266,55 @@ struct Index {
     }
     return imageBuffer;
   }
+
+//   async  example02(): Promise<void> {
+//   //打开相册选择器并设置图片选择特性
+//   let photoViewPicker = new picker.PhotoViewPicker();
+//   let photoSelectOption = new picker.PhotoSelectOptions();
+//   photoSelectOption.MIMEType = picker.PhotoViewMIMETypes.IMAGE_TYPE;
+//
+//   try {
+//     let photoSelectResult = await photoViewPicker.select(photoSelectOption);
+//     let uri = photoSelectResult.photoUris[0];
+//     photoUri = uri
+//     console.log("Selected URI:" + uri);
+//     //每次绘制图片前先清空画布
+//
+//
+//     // getImageSize(uri)
+//     // 创建requestAI实例
+//     let requestAIInstance = new RequestAI(uri);
+//     // 上传并获取响应数据
+//     await requestAIInstance.PostAI().then((response: GG) => {
+//       responseStr = response.data
+//       imgWidth = response.width
+//       imgHeight = response.height
+//     }).catch((error: Error) => {
+//       console.error('Error communicating with AI')
+//     })
+//
+//
+//     console.log("服务器返回的数据:", responseStr);
+//     //将PostAI返回的字符串数据赋值给当前文件中的全局变量responseStr
+//     // responseStr = responseArray
+//     // responseStr = "{\"detection_classes\": [\"Mouse_bite\", \"Mouse_bite\", \"Mouse_bite\", \"Open_circuit\", \"Mouse_bite\", \"Open_circuit\", \"Mouse_bite\", \"Open_circuit\", \"Mouse_bite\", \"Open_circuit\"], \"detection_boxes\": [[578, 646, 604, 672], [559, 609, 584, 640], [407, 264, 424, 303], [1052, 912, 1075, 925], [26, 740, 38, 761], [715, 1351, 743, 1358], [62, 1382, 84, 1397], [714, 1050, 724, 1074], [68, 864, 78, 884], [823, 1099, 834, 1108]], \"detection_scores\": [0.954258, 0.93341, 0.933286, 0.930765, 0.919465, 0.918447, 0.917989, 0.913556, 0.910603, 0.886787]}"
+//
+//     //解析服务器返回的数据为DetectionResponse
+//     try {
+//       responseData = JSON.parse(responseStr) as DetectionResponse;
+//       console.error("解析后的数据:", responseData.detection_classes[0]);
+//     } catch (error) {
+//       console.error("解析服务器返回的数据时出错:", error);
+//     }
+//
+//   } catch (err) {
+//     if ((err as BusinessError).code !== undefined && (err as BusinessError).message !== undefined) {
+//       console.error(`操作失败: code: ${(err as BusinessError).code}, message: ${(err as BusinessError).message}`);
+//     } else {
+//       console.error("上传或解析过程中出错:", err);
+//     }
+//   }
+// }
 
 }
 
