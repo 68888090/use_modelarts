@@ -59,6 +59,9 @@ async function example02(): Promise<void> {
 
     console.log("服务器返回的数据:", responseStr);
 
+    //0010 Respoonse
+    responseStr = "{\"detection_classes\": [\"Mouse_bite\", \"Mouse_bite\", \"Mouse_bite\", \"Open_circuit\", \"Mouse_bite\", \"Open_circuit\", \"Mouse_bite\", \"Open_circuit\", \"Mouse_bite\", \"Open_circuit\"], \"detection_boxes\": [[578, 646, 604, 672], [559, 609, 584, 640], [407, 264, 424, 303], [1052, 912, 1075, 925], [26, 740, 38, 761], [715, 1351, 743, 1358], [62, 1382, 84, 1397], [714, 1050, 724, 1074], [68, 864, 78, 884], [823, 1099, 834, 1108]], \"detection_scores\": [0.954258, 0.93341, 0.933286, 0.930765, 0.919465, 0.918447, 0.917989, 0.913556, 0.910603, 0.886787]}\n"
+
     //解析服务器返回的数据为DetectionResponse
     try {
       responseData = JSON.parse(responseStr) as DetectionResponse;
@@ -198,7 +201,7 @@ struct Index {
     imgWidth: number, drawWidth: number) {
 
     // 设置检测框
-    this.context.strokeStyle = 'green';
+    // this.context.strokeStyle = 'green';
     this.context.lineWidth = 1;
     //计算缩放率
     let ratio = drawWidth / imgWidth
@@ -223,11 +226,24 @@ struct Index {
       this.context.rect(rectX, rectY, rectWidth, rectHeight);
       this.context.stroke();
 
+      if(response.detection_classes[index]=="Open_circuit"){
+        this.context.strokeStyle = '001B1B';
+      }else if(response.detection_classes[index]=="Mouse_bite"){
+        this.context.strokeStyle = 'green';
+      }else{
+        this.context.strokeStyle = 'red';
+      }
+
       this.context.fillStyle = 'white';
       this.context.font = '40px Arial';
-      this.context.fillText(response.detection_classes[index] + "(" +
-      (response.detection_scores[index] * 100).toFixed(0) + "%)",
-        rectX-40, y21+10);
+      this.context.shadowColor = 'black';
+
+      // this.context.fillText(response.detection_classes[index] + "(" +
+      // (response.detection_scores[index] * 100).toFixed(0) + "%)",
+      //   rectX-40, y21+10);
+
+      this.context.fillText( "(" + (response.detection_scores[index] * 100).toFixed(0) + "%)",
+        x21+5, y21+2);
     });
   }
 
