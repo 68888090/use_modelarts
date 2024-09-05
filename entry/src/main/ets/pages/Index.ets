@@ -18,7 +18,7 @@ import { media } from '@kit.MediaKit';
 interface FailResponse{
   erno:string,
   msg:string,
-  words_result:string
+  words_result:string|null
 }
 
 let responseStr: string = ""
@@ -28,6 +28,7 @@ let photoUri: string = ""
 // 获取图片的原始宽高
 let imgWidth = 500;
 let imgHeight = 500;
+let status:string = "fail"
 let displayer =  display.getDefaultDisplaySync()
 
 @Entry
@@ -167,26 +168,27 @@ struct Index {
   async uploadAndDrawImage() {
 
     await this.example02();
-    if (photoUri) { // 假设 photoUri 是图片的 URI
-      this.img = new ImageBitmap(photoUri)
+    if(status=="success"){
+      if (photoUri) { // 假设 photoUri 是图片的 URI
+        this.img = new ImageBitmap(photoUri)
+        this.gifVisible = Visibility.None
+        this.canvasVisible = Visibility.Visible
+        if (await this.drawImage()) {
+          if (responseData) { // 绘制标注
+            this.drawAnnotations(responseData, imgWidth, 370);
+          }else {
+            promptAction.showToast({
+              message: '没有可用的DetectResponse类型数据'
+            })
+          }
+        }
+      } else {
+        console.error('不存在有效的图片地址')
+      }
+    }else{
       this.gifVisible = Visibility.None
       this.canvasVisible = Visibility.Visible
-      if (await this.drawImage()) {
-        if (responseData && responseData.detection_classes.length!=0) { // 绘制标注
-          this.drawAnnotations(responseData, imgWidth, 370);
-        }else if(responseData && responseData.detection_classes.length==0
-        && responseData.detection_boxes.length==0 && responseData.detection_scores.length==0){
-          promptAction.showToast({
-            message: '当前上传的图片不是有效芯片图片！'
-          })
-        } else {
-          promptAction.showToast({
-            message: '没有可用的DetectResponse类型数据'
-          })
-        }
-      }
-    } else {
-      console.error('不存在有效的图片地址')
+      console.error("数据状态不可用")
     }
   }
 
@@ -318,23 +320,45 @@ struct Index {
       console.log("服务器返回的数据:", responseStr);
       //将PostAI返回的字符串数据赋值给当前文件中的全局变量responseStr
       // responseStr = responseArray
-      responseStr =
-        "{\"detection_classes\": [\"Mouse_bite\", \"Mouse_bite\", \"Mouse_bite\", \"Open_circuit\", \"Mouse_bite\", \"Open_circuit\", \"Mouse_bite\", \"Open_circuit\", \"Mouse_bite\", \"Open_circuit\"], \"detection_boxes\": [[578, 646, 604, 672], [559, 609, 584, 640], [407, 264, 424, 303], [1052, 912, 1075, 925], [26, 740, 38, 761], [715, 1351, 743, 1358], [62, 1382, 84, 1397], [714, 1050, 724, 1074], [68, 864, 78, 884], [823, 1099, 834, 1108]], \"detection_scores\": [0.954258, 0.93341, 0.933286, 0.930765, 0.919465, 0.918447, 0.917989, 0.913556, 0.910603, 0.886787]}"
+      // responseStr =
+      //   "{\"detection_classes\": [\"Mouse_bite\", \"Mouse_bite\", \"Mouse_bite\", \"Open_circuit\", \"Mouse_bite\", \"Open_circuit\", \"Mouse_bite\", \"Open_circuit\", \"Mouse_bite\", \"Open_circuit\"], \"detection_boxes\": [[578, 646, 604, 672], [559, 609, 584, 640], [407, 264, 424, 303], [1052, 912, 1075, 925], [26, 740, 38, 761], [715, 1351, 743, 1358], [62, 1382, 84, 1397], [714, 1050, 724, 1074], [68, 864, 78, 884], [823, 1099, 834, 1108]], \"detection_scores\": [0.954258, 0.93341, 0.933286, 0.930765, 0.919465, 0.918447, 0.917989, 0.913556, 0.910603, 0.886787]}"
+      responseStr = "{ \"detection_classes\": [], \"detection_boxes\": [],\"detection_scores\": []}"
 
       //解析服务器返回的数据为DetectionResponse
         try {
           originalData = JSON.parse(responseStr) as DetectionResponse;
-          responseData = originalData
+          if(originalData){
+            //可以解析但是不是有效数据
+            if(originalData.detection_classes.length==0 && originalData.detection_boxes.length==0
+              && originalData.detection_scores.length==0){
+              promptAction.showToast({
+                message: '当前上传图片不是有效芯片图片！',
+                duration:3000
+              })
+              console.error("可以解析但是不是有效数据")
+              //可以解析并且是有效数据
+            }else if(originalData.detection_classes.length!=0 && originalData.detection_boxes.length!=0
+              && originalData.detection_scores.length!=0){
+              responseData = originalData
+              status = "success"
+            }
+            //无法解析为有效对象
+          }else{
+            //尝试解析为FailResponse
+            try {
+              originalData = JSON.parse(responseStr) as FailResponse;
+              promptAction.showToast({
+                message: originalData.msg+",算法无法识别当前上传的图片",
+                duration:3000
+              })
+              console.error(originalData.msg)
+            } catch (error) {
+              console.error("解析服务器返回数据为FailResponse类型时出错:", error);
+            }
+          }
+
         } catch (error) {
-          console.error("解析服务器返回数据为DetectionResponse类型时出错:", error);
-        }
-        try {
-          originalData = JSON.parse(responseStr) as FailResponse;
-          promptAction.showToast({
-            message: originalData.msg+",算法无法识别当前上传的图片"
-          })
-        } catch (error) {
-          console.error("解析服务器返回数据为FailResponse类型时出错:", error);
+          console.error("服务器返回数据解析出错:", error);
         }
 
     }catch (err){
