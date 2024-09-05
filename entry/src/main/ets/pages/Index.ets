@@ -99,6 +99,17 @@ struct Index {
           right: 5
         });
 
+      Canvas(this.context2)
+        .width('100%')
+        .height('20%')
+        .margin({ left:30,bottom: 30 })
+        // .backgroundColor("#d3d3d3")
+        .onReady(() => {
+          this.drawHints();
+        })
+        .width("90%")
+        .height('10%')
+
       Button(this.message, { type: ButtonType.Capsule })
         .fontSize(20)
         .onClick(() => {
@@ -116,16 +127,6 @@ struct Index {
           }
         });
 
-      Canvas(this.context2)
-        .width('100%')
-        .height('20%')
-        .margin({ top: 30, bottom: 10 })
-        .backgroundColor("#d3d3d3")
-        .onReady(() => {
-          this.drawHints();
-        })
-        .width("90%")
-
     }.width('100%')
   }
 
@@ -135,43 +136,33 @@ struct Index {
     this.context2.lineWidth = 2;
     this.context2.font = '48px Arial';
     this.context2.fillStyle = 'black';
-    this.context2.fillText("颜色缺陷对应表：（图中括号内为预测置信度）", 20, 20);
+    this.context2.fillText("颜色缺陷对照表：（图中括号内为预测置信度）", 10, 20);
 
-    this.context2.font = '64px Arial';
-    this.context2.strokeStyle = 'red';
-    this.context2.beginPath();
-    this.context2.rect(20, 40, 20, 10);
-    this.context2.stroke();
+    this.context2.font = '40px Arial';
     this.context2.fillStyle = 'red';
-    this.context2.fillText(names[0], 60, 50);
-
-    this.context2.strokeStyle = 'green';
-    this.context2.beginPath();
-    this.context2.rect(200, 40, 20, 10);
-    this.context2.stroke();
-    this.context2.fillStyle = 'green';
-    this.context2.fillText(names[0], 240, 50);
-
-    this.context2.strokeStyle = '#ffff00';
-    this.context2.beginPath();
-    this.context2.rect(20, 80, 20, 10);
-    this.context2.stroke();
-    this.context2.fillStyle = '#ffff00';
-    this.context2.fillText(names[0], 60, 90);
-
-    this.context2.strokeStyle = 'black';
-    this.context2.beginPath();
-    this.context2.rect(200, 80, 20, 10);
-    this.context2.stroke();
+    this.context2.fillRect(10, 40, 10, 5);
     this.context2.fillStyle = 'black';
-    this.context2.fillText(names[0], 240, 90);
+    this.context2.fillText(names[0], 30, 47);
 
-    this.context2.strokeStyle = 'blue';
-    this.context2.beginPath();
-    this.context2.rect(20, 120, 20, 10);
-    this.context2.stroke();
+    this.context2.fillStyle = 'green';
+    this.context2.fillRect(120, 40, 10, 5);
+    this.context2.fillStyle = 'black';
+    this.context2.fillText(names[1], 140, 47);
+
+    this.context2.fillStyle = '#ffff00';
+    this.context2.fillRect(240, 40, 10, 5);
+    this.context2.fillStyle = 'black';
+    this.context2.fillText(names[2], 260, 47);
+
+    this.context2.fillStyle = 'black';
+    this.context2.fillRect(10, 60, 10, 5);
+    this.context2.fillStyle = 'black';
+    this.context2.fillText(names[3], 30, 67);
+
     this.context2.fillStyle = 'blue';
-    this.context2.fillText(names[0], 60, 130);
+    this.context2.fillRect(120, 60, 10, 5);
+    this.context2.fillStyle = 'black';
+    this.context2.fillText(names[4], 140, 67);
   }
 
   // 延迟触发绘图
