@@ -29,6 +29,8 @@ let photoUri: string = ""
 let imgWidth = 500;
 let imgHeight = 500;
 let status:string = "fail"
+//传输状态标记 1：正在传输；0：当前没有传输
+let isLoading:boolean = false
 let displayer =  display.getDefaultDisplaySync()
 
 @Entry
@@ -103,7 +105,15 @@ struct Index {
           if (this.context) {
             this.context.clearRect(0, 0, this.context.width, this.context.height);
           }
-          this.uploadAndDrawImage();
+          if(isLoading==false){
+            status = "fail"
+            this.uploadAndDrawImage();
+          }else{
+            promptAction.showToast({
+              message:"数据正在传输，请稍等",
+              duration:3000
+            })
+          }
         });
 
       Canvas(this.context2)
@@ -166,11 +176,12 @@ struct Index {
 
   // 延迟触发绘图
   async uploadAndDrawImage() {
-
     await this.example02();
+
     if(status=="success"){
-      if (photoUri) { // 假设 photoUri 是图片的 URI
+      if (photoUri) {
         this.img = new ImageBitmap(photoUri)
+        //清除加载动画
         this.gifVisible = Visibility.None
         this.canvasVisible = Visibility.Visible
         if (await this.drawImage()) {
@@ -186,6 +197,7 @@ struct Index {
         console.error('不存在有效的图片地址')
       }
     }else{
+      //清除加载动画
       this.gifVisible = Visibility.None
       this.canvasVisible = Visibility.Visible
       console.error("数据状态不可用")
@@ -297,17 +309,18 @@ struct Index {
 
     try {
       let photoSelectResult = await photoViewPicker.select(photoSelectOption);
+      let uri = photoSelectResult.photoUris[0];
+      photoUri = uri
+      // console.log("Selected URI:" + uri);
 
+      //选择图片后，隐藏画布，显示加载动画
       this.canvasVisible = Visibility.None
       this.gifVisible = Visibility.Visible
 
-      let uri = photoSelectResult.photoUris[0];
-      photoUri = uri
-      console.log("Selected URI:" + uri);
-
-      // getImageSize(uri)
       // 创建requestAI实例
       let requestAIInstance = new RequestAI(uri);
+      //标记传输状态为1：正在传输
+      isLoading = true
       // 上传并获取响应数据
       await requestAIInstance.PostAI().then((response: GG) => {
         responseStr = response.data
@@ -316,18 +329,21 @@ struct Index {
       }).catch((error: Error) => {
         console.error('Error communicating with AI')
       })
+      //标记传输状态为0
+      isLoading = false
 
       console.log("服务器返回的数据:", responseStr);
       //将PostAI返回的字符串数据赋值给当前文件中的全局变量responseStr
       // responseStr = responseArray
-      // responseStr =
-      //   "{\"detection_classes\": [\"Mouse_bite\", \"Mouse_bite\", \"Mouse_bite\", \"Open_circuit\", \"Mouse_bite\", \"Open_circuit\", \"Mouse_bite\", \"Open_circuit\", \"Mouse_bite\", \"Open_circuit\"], \"detection_boxes\": [[578, 646, 604, 672], [559, 609, 584, 640], [407, 264, 424, 303], [1052, 912, 1075, 925], [26, 740, 38, 761], [715, 1351, 743, 1358], [62, 1382, 84, 1397], [714, 1050, 724, 1074], [68, 864, 78, 884], [823, 1099, 834, 1108]], \"detection_scores\": [0.954258, 0.93341, 0.933286, 0.930765, 0.919465, 0.918447, 0.917989, 0.913556, 0.910603, 0.886787]}"
-      responseStr = "{ \"detection_classes\": [], \"detection_boxes\": [],\"detection_scores\": []}"
+      responseStr =
+        "{\"detection_classes\": [\"Mouse_bite\", \"Mouse_bite\", \"Mouse_bite\", \"Open_circuit\", \"Mouse_bite\", \"Open_circuit\", \"Mouse_bite\", \"Open_circuit\", \"Mouse_bite\", \"Open_circuit\"], \"detection_boxes\": [[578, 646, 604, 672], [559, 609, 584, 640], [407, 264, 424, 303], [1052, 912, 1075, 925], [26, 740, 38, 761], [715, 1351, 743, 1358], [62, 1382, 84, 1397], [714, 1050, 724, 1074], [68, 864, 78, 884], [823, 1099, 834, 1108]], \"detection_scores\": [0.954258, 0.93341, 0.933286, 0.930765, 0.919465, 0.918447, 0.917989, 0.913556, 0.910603, 0.886787]}"
+      // responseStr = "{ \"detection_classes\": [], \"detection_boxes\": [],\"detection_scores\": []}"
 
       //解析服务器返回的数据为DetectionResponse
         try {
           originalData = JSON.parse(responseStr) as DetectionResponse;
           if(originalData){
+
             //可以解析但是不是有效数据
             if(originalData.detection_classes.length==0 && originalData.detection_boxes.length==0
               && originalData.detection_scores.length==0){
@@ -336,6 +352,7 @@ struct Index {
                 duration:3000
               })
               console.error("可以解析但是不是有效数据")
+
               //可以解析并且是有效数据
             }else if(originalData.detection_classes.length!=0 && originalData.detection_boxes.length!=0
               && originalData.detection_scores.length!=0){
