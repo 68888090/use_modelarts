@@ -6,7 +6,7 @@ import { http } from '@kit.NetworkKit';
 import { Button, display, promptAction } from '@kit.ArkUI'
 import { RequestAI, DetectionResponse } from '../Utils/requestAI'
 import { BusinessError } from '@kit.BasicServicesKit';
-import { Permissions } from '@kit.AbilityKit';
+import { Context, Permissions } from '@kit.AbilityKit';
 import PermissionsUtil from '../Utils/PermissionsUtil';
 import { image } from '@kit.ImageKit';
 import { resourceManager } from '@kit.LocalizationKit';
@@ -14,7 +14,8 @@ import { photoAccessHelper } from '@kit.MediaLibraryKit';
 import { responseString } from '../Utils/requestAI'
 import { GG } from '../Utils/Pri_data';
 import { media } from '@kit.MediaKit';
-import { MessageRoleEnum, MessageVO, TextTest } from '../Utils/chatUtil';
+import { MessageRoleEnum, MessageVO,MessageVOImpl } from '../Utils/chatUtil';
+import BaiduHttp from '../Utils/BaiduHttp'
 
 interface FailResponse{
   erno:string,
@@ -33,8 +34,6 @@ let status:string = "fail"
 //传输状态标记 1：正在传输；0：当前没有传输
 let isLoading:boolean = false
 let displayer =  display.getDefaultDisplaySync()
-
-
 
 @Entry
 @Component
@@ -55,6 +54,10 @@ struct Index {
   @State pinchY: number = 0
   @State canvasVisible: Visibility = Visibility.Visible;
   @State gifVisible: Visibility = Visibility.None;
+  //绑定聊天界面输入框
+  @State submitMsg: string = ''
+  @State textInputMsg: string = ''
+  private messageArray:Array<MessageVO> = []
 
   build() {
     Tabs({ barPosition: BarPosition.End }) {
@@ -145,11 +148,11 @@ struct Index {
         Row() {
           Column() {
             // 1 对话框头
-            headerText("Hello ChatGPT")
+            headerText("Hello AI")
             // 2 对话框
-            chatList(this.scroller)
+            chatList(this.scroller,this.messageArray)
             // 3 输入框
-            inputBox()
+            inputBox(this.scroller,this.messageArray,this.textInputMsg,this.submitMsg)
           }
           .width('100%')
         }
@@ -159,6 +162,8 @@ struct Index {
     }
     .scrollable(false)
   }
+
+
 
   //绘制彩色指示图
   private drawHints() {
@@ -417,14 +422,39 @@ function headerText(title: string) {
     .height('10%')
 }
 
-@Builder function inputBox(){
+@Builder function inputBox(scroller: Scroller, messageArr: MessageVO[],textInputMsg:string,submitMsg:string){
   Row() {
     Stack() {
-      TextInput({placeholder: '有问题尽管问我~'})
+      TextInput({placeholder: '有问题尽管问我~', text: textInputMsg})
         .height(50)
-        .enterKeyType(EnterKeyType.Send);
+        .enterKeyType(EnterKeyType.Send)
+        .onChange((text) => {
+          submitMsg = text
+          textInputMsg = text
+        })
+        //从输入法按下回车触发
+        .onSubmit(() => {
+          textInputMsg = '' // 点击发送后 输入框置空
+          messageArr.push(new MessageVOImpl(MessageRoleEnum.Mine, submitMsg)) // 立刻展示我方对话
+          scroller.scrollEdge(Edge.Bottom) // 消息发送后 将列表滚动到底端
+          // 发送http请求
+          BaiduHttp.requestChat(submitMsg, (responseText: string) => {
+            messageArr.push(new MessageVOImpl(MessageRoleEnum.Other, responseText)) // 展示对方对话
+            scroller.scrollEdge(Edge.Bottom) // 消息显示后 将列表滚动到底端
+          })
+        });
       Button("->",{type:ButtonType.Capsule})
         .fontWeight(FontWeight.Bold)
+        .onClick(() => {
+          textInputMsg = '' // 点击发送后 输入框置空
+          messageArr.push(new MessageVOImpl(MessageRoleEnum.Mine, submitMsg)) // 立刻展示我方对话
+          scroller.scrollEdge(Edge.Bottom) // 消息发送后 将列表滚动到底端
+          // 发送http请求
+          BaiduHttp.requestChat(submitMsg, (responseText: string) => {
+            messageArr.push(new MessageVOImpl(MessageRoleEnum.Other, responseText)) // 展示对方对话
+            scroller.scrollEdge(Edge.Bottom) // 消息显示后 将列表滚动到底端
+          })
+        })
     }
     .alignContent(Alignment.End)
     .height('10%')
@@ -432,9 +462,9 @@ function headerText(title: string) {
   .width('90%')
 }
 
-@Builder function chatList(scroller:Scroller) {
+@Builder function chatList(scroller:Scroller,messages:MessageVO[]) {
   List({space: 15, scroller: scroller}) {
-    ForEach(TextTest.Text, (item: MessageVO) => {
+    ForEach(messages, (item: MessageVO) => {
       if (item.role === MessageRoleEnum.Mine) {
         chatLine_mine(item.message)
       } else {

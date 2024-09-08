@@ -1,6 +1,14 @@
- export interface  MessageVO {
+export interface MessageVO {
   role: MessageRoleEnum
   message: string
+}
+export class MessageVOImpl implements MessageVO {
+  role: MessageRoleEnum
+  message: string
+  constructor(role: MessageRoleEnum,message: string) {
+    this.role = role
+    this.message = message
+  }
 }
 
 export enum MessageRoleEnum {
@@ -9,7 +17,6 @@ export enum MessageRoleEnum {
   // 对方
   Other
 }
-
 
 export class TextTest {
   static readonly Text: MessageVO[] = [
