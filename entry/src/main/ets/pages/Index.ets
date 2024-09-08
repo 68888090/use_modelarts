@@ -14,6 +14,7 @@ import { photoAccessHelper } from '@kit.MediaLibraryKit';
 import { responseString } from '../Utils/requestAI'
 import { GG } from '../Utils/Pri_data';
 import { media } from '@kit.MediaKit';
+import { MessageRoleEnum, MessageVO, TextTest } from '../Utils/chatUtil';
 
 interface FailResponse{
   erno:string,
@@ -33,14 +34,18 @@ let status:string = "fail"
 let isLoading:boolean = false
 let displayer =  display.getDefaultDisplaySync()
 
+
+
 @Entry
 @Component
 struct Index {
+  private scroller: Scroller= new Scroller(); // 创建一个滚动控制器;
   @State message: string = '点此选择照片';
   @State pixelMap: image.PixelMap | undefined = undefined
   private settings: RenderingContextSettings = new RenderingContextSettings(true)
   private context: CanvasRenderingContext2D = new CanvasRenderingContext2D(this.settings)
   private context2: CanvasRenderingContext2D = new CanvasRenderingContext2D(this.settings)
+  private context0: CanvasRenderingContext2D = new CanvasRenderingContext2D(this.settings)
   private offCanvas: OffscreenCanvas = new OffscreenCanvas(375, 600)
   private img: ImageBitmap | null = null
   private permissions: Array<Permissions> = ['ohos.permission.WRITE_IMAGEVIDEO', 'ohos.permission.READ_IMAGEVIDEO'];
@@ -52,82 +57,107 @@ struct Index {
   @State gifVisible: Visibility = Visibility.None;
 
   build() {
-    Column() {
-      Flex({ direction: FlexDirection.Column, alignItems: ItemAlign.Center }) {
-        Canvas(this.context)
-          .width('100%')
-          .height('100%')
-          .backgroundColor('#ffffff')
-          .scale({ x: this.scaleValue, y: this.scaleValue, z: 1 })
-          .onReady(() => {
-          })
-          .gesture(PinchGesture({ fingers: 2 })
+    Tabs({ barPosition: BarPosition.End }) {
 
-            .onActionStart((event: GestureEvent) => {
-              console.info('Pinch start')
+      //故障显示界面
+      TabContent(){
+        Column() {
+          Flex({ direction: FlexDirection.Column, alignItems: ItemAlign.Center }) {
+            Canvas(this.context)
+              .width('100%')
+              .height('100%')
+              .backgroundColor('#ffffff')
+              .scale({ x: this.scaleValue, y: this.scaleValue, z: 1 })
+              .onReady(() => {
+              })
+              .gesture(PinchGesture({ fingers: 2 })
+
+                .onActionStart((event: GestureEvent) => {
+                  console.info('Pinch start')
+                })
+                .onActionUpdate((event: GestureEvent) => {
+                  if (event) {
+                    this.scaleValue = this.pinchValue * event.scale
+                    this.pinchX = event.pinchCenterX
+                    this.pinchY = event.pinchCenterY
+                  }
+                })
+                .onActionEnd((event: GestureEvent) => {
+                  this.pinchValue = this.scaleValue
+                  console.info('Pinch end')
+                })
+              )
+          }
+          .backgroundColor('red')
+          .visibility(this.canvasVisible)
+          .height('55%')
+          .margin({
+            top: 100,
+            bottom: 10,
+            left: 5,
+            right: 5
+          });
+
+          Image($r('app.media.1'))
+            .height('55%')
+            .visibility(this.gifVisible)
+            .margin({
+              top: 100,
+              bottom: 10,
+              left: 5,
+              right: 5
+            });
+
+          Canvas(this.context2)
+            .width('100%')
+            .height('20%')
+            .margin({ left:30,bottom: 30 })
+              // .backgroundColor("#d3d3d3")
+            .onReady(() => {
+              this.drawHints();
             })
-            .onActionUpdate((event: GestureEvent) => {
-              if (event) {
-                this.scaleValue = this.pinchValue * event.scale
-                this.pinchX = event.pinchCenterX
-                this.pinchY = event.pinchCenterY
+            .width("90%")
+            .height('10%')
+
+          Button(this.message, { type: ButtonType.Capsule })
+            .fontSize(20)
+            .onClick(() => {
+              if (this.context) {
+                this.context.clearRect(0, 0, this.context.width, this.context.height);
               }
-            })
-            .onActionEnd((event: GestureEvent) => {
-              this.pinchValue = this.scaleValue
-              console.info('Pinch end')
-            })
-          )
+              if(isLoading==false){
+                status = "fail"
+                this.uploadAndDrawImage();
+              }else{
+                promptAction.showToast({
+                  message:"数据正在传输，请稍等",
+                  duration:3000
+                })
+              }
+            });
+
+        }.width('100%')
       }
-      .backgroundColor('red')
-      .visibility(this.canvasVisible)
-      .height('55%')
-      .margin({
-        top: 100,
-        bottom: 10,
-        left: 5,
-        right: 5
-      });
+      .tabBar('首页')
 
-      Image($r('app.media.1'))
-        .height('55%')
-        .visibility(this.gifVisible)
-        .margin({
-          top: 100,
-          bottom: 10,
-          left: 5,
-          right: 5
-        });
-
-      Canvas(this.context2)
-        .width('100%')
-        .height('20%')
-        .margin({ left:30,bottom: 30 })
-        // .backgroundColor("#d3d3d3")
-        .onReady(() => {
-          this.drawHints();
-        })
-        .width("90%")
-        .height('10%')
-
-      Button(this.message, { type: ButtonType.Capsule })
-        .fontSize(20)
-        .onClick(() => {
-          if (this.context) {
-            this.context.clearRect(0, 0, this.context.width, this.context.height);
+      //AI聊天界面
+      TabContent() {
+        Row() {
+          Column() {
+            // 1 对话框头
+            headerText("Hello ChatGPT")
+            // 2 对话框
+            chatList(this.scroller)
+            // 3 输入框
+            inputBox()
           }
-          if(isLoading==false){
-            status = "fail"
-            this.uploadAndDrawImage();
-          }else{
-            promptAction.showToast({
-              message:"数据正在传输，请稍等",
-              duration:3000
-            })
-          }
-        });
-
-    }.width('100%')
+          .width('100%')
+        }
+        .height('100%')
+      }
+      .tabBar('AI对话')
+    }
+    .scrollable(false)
   }
 
   //绘制彩色指示图
@@ -377,4 +407,85 @@ struct Index {
       }
     }
   }
+}
+
+@Builder
+function headerText(title: string) {
+  Text(title)
+    .minFontSize(20).maxFontSize(30).maxLines(1)
+    .fontWeight(FontWeight.Bold)
+    .height('10%')
+}
+
+@Builder function inputBox(){
+  Row() {
+    Stack() {
+      TextInput({placeholder: '有问题尽管问我~'})
+        .height(50)
+        .enterKeyType(EnterKeyType.Send);
+      Button("->",{type:ButtonType.Capsule})
+        .fontWeight(FontWeight.Bold)
+    }
+    .alignContent(Alignment.End)
+    .height('10%')
+  }
+  .width('90%')
+}
+
+@Builder function chatList(scroller:Scroller) {
+  List({space: 15, scroller: scroller}) {
+    ForEach(TextTest.Text, (item: MessageVO) => {
+      if (item.role === MessageRoleEnum.Mine) {
+        chatLine_mine(item.message)
+      } else {
+        chatLine_other(item.message)
+      }
+    })
+  }
+  // .alignListItem(ListItemAlign.Center)
+  .height('80%')
+  .width('100%')
+  .padding({left:15,right:15})
+}
+
+@Builder function chatLine_other(msg:string) {
+  Row({space: 5}) {
+    Text(msg).chatLine_text_style_others()
+  }
+  .alignItems(VerticalAlign.Top)
+  .justifyContent(FlexAlign.Start)
+  .alignSelf(ItemAlign.Start);          // 控制整个 Row 左对齐
+}
+
+@Builder function chatLine_mine(msg:string) {
+  Row({space: 5}) {
+    Text(msg).chatLine_text_style_mine()
+  }
+  .alignItems(VerticalAlign.Top)
+  .justifyContent(FlexAlign.End)
+  .width('100%')
+  .alignSelf(ItemAlign.End); // 控制整个 Row 右对齐// 控制气泡右对齐
+}
+
+@Extend(Text) function chatLine_text_style_mine() {
+  .fontSize(20)
+  .fontColor(Color.White)
+  .width('65%')
+  .lineHeight(25)
+  .backgroundColor('rgba(41, 83, 243, 1.00)')
+  .padding(12)
+  .border({radius: 10})
+  .textAlign(TextAlign.Start)  // 确保文本内容左对齐
+  .alignSelf(ItemAlign.Start)  // 确保整个 Text 元素左对齐
+}
+@Extend(Text) function chatLine_text_style_others() {
+  .fontSize(20)
+  .fontColor(Color.Black)
+  .width('90%')
+  .lineHeight(25)
+  .backgroundColor('rgba(229, 228, 228, 1.00)')
+  .padding(12)
+  .border({radius: 10})
+  .textAlign(TextAlign.Start)  // 确保文本内容左对齐
+  .alignSelf(ItemAlign.Start)  // 确保整个 Text 元素左对齐
 }
