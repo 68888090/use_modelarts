@@ -14,8 +14,11 @@ import { photoAccessHelper } from '@kit.MediaLibraryKit';
 import { responseString } from '../Utils/requestAI'
 import { GG } from '../Utils/Pri_data';
 import { media } from '@kit.MediaKit';
-import { MessageRoleEnum, MessageVO,MessageVOImpl } from '../Utils/chatUtil';
+import { MessageRoleEnum, MessageVO,MessageVOImpl,TextTest } from '../Utils/chatUtil';
 import BaiduHttp from '../Utils/BaiduHttp'
+import {ChatResponse} from '../Utils/BaiduHttp'
+import { TestType } from '@ohos/hypium';
+import RequestGPT from '../Utils/requsetGPT'
 
 interface FailResponse{
   erno:string,
@@ -57,7 +60,7 @@ struct Index {
   //绑定聊天界面输入框
   @State submitMsg: string = ''
   @State textInputMsg: string = ''
-  private messageArray:Array<MessageVO> = []
+  @State messageArray:MessageVOImpl[] = []
 
   build() {
     Tabs({ barPosition: BarPosition.End }) {
@@ -147,12 +150,69 @@ struct Index {
       TabContent() {
         Row() {
           Column() {
-            // 1 对话框头
             headerText("Hello AI")
-            // 2 对话框
-            chatList(this.scroller,this.messageArray)
-            // 3 输入框
-            inputBox(this.scroller,this.messageArray,this.textInputMsg,this.submitMsg)
+            // chatList(this.scroller,this.messageArray)
+            List({space: 15, scroller: this.scroller}) {
+              ForEach(this.messageArray, (item: MessageVOImpl) => {
+                if (item.role === MessageRoleEnum.Mine) {
+                  chatLine_mine(item.message)
+                } else {
+                  chatLine_other(item.message)
+                }
+              })
+            }
+            // .alignListItem(ListItemAlign.Center)
+            .height('80%')
+            .width('100%')
+            .padding({left:15,right:15})
+
+            // inputBox(this.scroller,this.messageArray,this.textInputMsg,this.submitMsg)
+            Row() {
+              Stack({alignContent: Alignment.Start}) {
+                TextInput({placeholder: '有问题尽管问我~', text: this.textInputMsg})
+                  .height(50)
+                  .layoutWeight('4')
+                  .enterKeyType(EnterKeyType.Send)
+                  .onChange((text) => {
+                    this.submitMsg = text
+                    this.textInputMsg = text
+                  })
+                  .onSubmit(async () => {
+                    this.textInputMsg = "" // 点击发送后 输入框置空
+                    this.messageArray.push(new MessageVOImpl(MessageRoleEnum.Mine, this.submitMsg)) // 立刻展示我方对话
+                    this.scroller.scrollEdge(Edge.Bottom) // 消息发送后 将列表滚动到底端
+                    // 发送http请求
+                    await BaiduHttp.requestChat(this.submitMsg, (responseText: string) => {
+                      this.messageArray.push(new MessageVOImpl(MessageRoleEnum.Other, responseText)) // 展示对方对话
+                      this.scroller.scrollEdge(Edge.Bottom)
+                    })}
+                  )
+
+                Image($r('app.media.shangchuan'))
+                  .width(24)
+                  .height(24)
+                  .fillColor(0xFF0000)
+                  .borderWidth(1)
+                  .align(Alignment.Start)
+
+                Button("发送",{type:ButtonType.Capsule})
+                  .fontSize('20')
+                  .layoutWeight('1.5')
+                  .onClick(async () => {
+                    this.textInputMsg = '' // 点击发送后 输入框置空
+                    this.messageArray.push(new MessageVOImpl(MessageRoleEnum.Mine, this.submitMsg)) // 立刻展示我方对话
+                    this.scroller.scrollEdge(Edge.Bottom) // 消息发送后 将列表滚动到底端
+                    // 发送http请求
+                    BaiduHttp.requestChat(this.submitMsg, (responseText: string) => {
+                      this.messageArray.push(new MessageVOImpl(MessageRoleEnum.Other, responseText)) // 展示对方对话
+                      this.scroller.scrollEdge(Edge.Bottom) // 消息显示后 将列表滚动到底端
+                    })
+                  })
+              }
+              .alignContent(Alignment.End)
+              .height('10%')
+            }
+            .width('90%')
           }
           .width('100%')
         }
@@ -414,68 +474,11 @@ struct Index {
   }
 }
 
-@Builder
-function headerText(title: string) {
+@Builder function headerText(title: string) {
   Text(title)
     .minFontSize(20).maxFontSize(30).maxLines(1)
     .fontWeight(FontWeight.Bold)
     .height('10%')
-}
-
-@Builder function inputBox(scroller: Scroller, messageArr: MessageVO[],textInputMsg:string,submitMsg:string){
-  Row() {
-    Stack() {
-      TextInput({placeholder: '有问题尽管问我~', text: textInputMsg})
-        .height(50)
-        .enterKeyType(EnterKeyType.Send)
-        .onChange((text) => {
-          submitMsg = text
-          textInputMsg = text
-        })
-        //从输入法按下回车触发
-        .onSubmit(() => {
-          textInputMsg = '' // 点击发送后 输入框置空
-          messageArr.push(new MessageVOImpl(MessageRoleEnum.Mine, submitMsg)) // 立刻展示我方对话
-          scroller.scrollEdge(Edge.Bottom) // 消息发送后 将列表滚动到底端
-          // 发送http请求
-          BaiduHttp.requestChat(submitMsg, (responseText: string) => {
-            messageArr.push(new MessageVOImpl(MessageRoleEnum.Other, responseText)) // 展示对方对话
-            scroller.scrollEdge(Edge.Bottom) // 消息显示后 将列表滚动到底端
-          })
-        });
-      Button("->",{type:ButtonType.Capsule})
-        .fontWeight(FontWeight.Bold)
-        .onClick(() => {
-          textInputMsg = '' // 点击发送后 输入框置空
-          messageArr.push(new MessageVOImpl(MessageRoleEnum.Mine, submitMsg)) // 立刻展示我方对话
-          scroller.scrollEdge(Edge.Bottom) // 消息发送后 将列表滚动到底端
-          // 发送http请求
-          BaiduHttp.requestChat(submitMsg, (responseText: string) => {
-            messageArr.push(new MessageVOImpl(MessageRoleEnum.Other, responseText)) // 展示对方对话
-            scroller.scrollEdge(Edge.Bottom) // 消息显示后 将列表滚动到底端
-          })
-        })
-    }
-    .alignContent(Alignment.End)
-    .height('10%')
-  }
-  .width('90%')
-}
-
-@Builder function chatList(scroller:Scroller,messages:MessageVO[]) {
-  List({space: 15, scroller: scroller}) {
-    ForEach(messages, (item: MessageVO) => {
-      if (item.role === MessageRoleEnum.Mine) {
-        chatLine_mine(item.message)
-      } else {
-        chatLine_other(item.message)
-      }
-    })
-  }
-  // .alignListItem(ListItemAlign.Center)
-  .height('80%')
-  .width('100%')
-  .padding({left:15,right:15})
 }
 
 @Builder function chatLine_other(msg:string) {
