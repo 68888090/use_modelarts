@@ -19,6 +19,8 @@ import BaiduHttp from '../Utils/BaiduHttp'
 import {ChatResponse} from '../Utils/BaiduHttp'
 import { TestType } from '@ohos/hypium';
 import RequestGPT from '../Utils/requsetGPT'
+import { PermissionManager} from '../Utils/VoicePermission'
+import SpeechRecognizerManager from '../Utils/SpeechRecognizerManager'
 
 interface FailResponse{
   erno:string,
@@ -61,6 +63,8 @@ struct Index {
   @State submitMsg: string = ''
   @State textInputMsg: string = ''
   @State messageArray:MessageVOImpl[] = []
+  //语音识别
+  @State Voicetext: string = ""
 
   build() {
     Tabs({ barPosition: BarPosition.End }) {
@@ -151,7 +155,12 @@ struct Index {
         Row() {
           Column() {
             headerText("Hello AI")
-            // chatList(this.scroller,this.messageArray)
+
+            Button("申请权限")
+              .onClick(this.fn1)
+            Button("实时语音识别")
+              .onClick(this.fn2)
+
             List({space: 15, scroller: this.scroller}) {
               ForEach(this.messageArray, (item: MessageVOImpl) => {
                 if (item.role === MessageRoleEnum.Mine) {
@@ -161,17 +170,36 @@ struct Index {
                 }
               })
             }
-            // .alignListItem(ListItemAlign.Center)
             .height('80%')
             .width('100%')
             .padding({left:15,right:15})
 
-            // inputBox(this.scroller,this.messageArray,this.textInputMsg,this.submitMsg)
             Row() {
-              Stack({alignContent: Alignment.Start}) {
+              Image($r('app.media.yuyin'))
+                .width(36)
+                .height(36)
+                .fillColor(0x000000)
+                .layoutWeight('0.5')
+                .margin({right:5})
+                // .bindMenu([
+                //   {
+                //     value:'上传当前图片',
+                //     action: () => {
+                //       console.info('handle Menu1 select')
+                //     }
+                //   },
+                //   {
+                //     value:'语音输入',
+                //     action: () => {
+                //       console.info('handle Menu1 select')
+                //     }
+                //   }
+                // ])
+
                 TextInput({placeholder: '有问题尽管问我~', text: this.textInputMsg})
                   .height(50)
                   .layoutWeight('4')
+                  .margin(5)
                   .enterKeyType(EnterKeyType.Send)
                   .onChange((text) => {
                     this.submitMsg = text
@@ -188,13 +216,6 @@ struct Index {
                     })}
                   )
 
-                Image($r('app.media.shangchuan'))
-                  .width(24)
-                  .height(24)
-                  .fillColor(0xFF0000)
-                  .borderWidth(1)
-                  .align(Alignment.Start)
-
                 Button("发送",{type:ButtonType.Capsule})
                   .fontSize('20')
                   .layoutWeight('1.5')
@@ -208,11 +229,8 @@ struct Index {
                       this.scroller.scrollEdge(Edge.Bottom) // 消息显示后 将列表滚动到底端
                     })
                   })
-              }
-              .alignContent(Alignment.End)
-              .height('10%')
             }
-            .width('90%')
+            .width('95%')
           }
           .width('100%')
         }
@@ -223,7 +241,24 @@ struct Index {
     .scrollable(false)
   }
 
-
+  // 1 申请权限
+  fn1 = async () => {
+    // 准备好需要申请的权限 麦克风权限
+    const permissions: Permissions[] = ["ohos.permission.MICROPHONE"]
+    // 检查是否拥有权限
+    const isPermission = await PermissionManager.checkPermission(permissions)
+    if (!isPermission) {
+      //   如果没权限，就主动申请
+      PermissionManager.requestPermission(permissions)
+    }
+  }
+  // 2 实时语音识别
+  fn2 = () => {
+    SpeechRecognizerManager.init(res => {
+      console.log("实时语音识别", JSON.stringify(res))
+      this.Voicetext = res.result
+    })
+  }
 
   //绘制彩色指示图
   private drawHints() {
