@@ -40,6 +40,13 @@ let status:string = "fail"
 let isLoading:boolean = false
 let displayer =  display.getDefaultDisplaySync()
 
+interface Rect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 @Entry
 @Component
 struct Index {
@@ -65,6 +72,21 @@ struct Index {
   @State messageArray:MessageVOImpl[] = []
   //语音识别
   @State Voicetext: string = ""
+  //手势标记信号
+  @State buttonVisibility:Visibility = Visibility.Hidden
+  @State isMarking:boolean = false
+  @State isPaning:boolean = false
+  //记录方框数组
+  @State rectangles: Rect[] = [];
+  @State offsetX: number = 0;
+  @State offsetY: number = 0;
+  @State positionX: number = 0;
+  @State positionY: number = 0;
+  private panOption: PanGestureOptions = new PanGestureOptions({ direction: PanDirection.All ,fingers:1})
+  @State boxScaleValue: number = 1
+  @State boxPinchValue: number = 1
+  @State boxPinchX: number = 0
+  @State boxPinchY: number = 0
 
   build() {
     Tabs({ barPosition: BarPosition.End }) {
@@ -73,30 +95,104 @@ struct Index {
       TabContent(){
         Column() {
           Flex({ direction: FlexDirection.Column, alignItems: ItemAlign.Center }) {
-            Canvas(this.context)
-              .width('100%')
-              .height('100%')
-              .backgroundColor('#ffffff')
-              .scale({ x: this.scaleValue, y: this.scaleValue, z: 1 })
-              .onReady(() => {
-              })
-              .gesture(PinchGesture({ fingers: 2 })
-
-                .onActionStart((event: GestureEvent) => {
-                  console.info('Pinch start')
-                })
-                .onActionUpdate((event: GestureEvent) => {
-                  if (event) {
-                    this.scaleValue = this.pinchValue * event.scale
-                    this.pinchX = event.pinchCenterX
-                    this.pinchY = event.pinchCenterY
+            Stack(){
+              Canvas(this.context)
+                .width('100%')
+                .height('100%')
+                .backgroundColor('#ffffff')
+                .scale({ x: this.scaleValue, y: this.scaleValue, z: 1 })
+                  //点击画布提示长按开启绘图模式
+                .onClick(()=>{
+                  if(!this.isMarking){
+                    promptAction.showToast({
+                      message:"长按进入手绘模式",
+                      duration:1000
+                    })
                   }
                 })
-                .onActionEnd((event: GestureEvent) => {
-                  this.pinchValue = this.scaleValue
-                  console.info('Pinch end')
+                  //长按画布开启绘图模式，显示关闭按钮
+                .gesture(
+                  LongPressGesture({ repeat: false })
+                    // 长按动作一结束触发
+                    .onActionEnd((event: GestureEvent) => {
+                      this.isMarking = true;
+                      this.buttonVisibility = Visibility.Visible;
+                    })
+                )
+                  //单指滑动，捕获起始点坐标，绘制矩形
+                .onReady(() => {
                 })
-              )
+                .gesture(PinchGesture({ fingers: 2 })
+
+                  .onActionStart((event: GestureEvent) => {
+                    console.info('Pinch start')
+                  })
+                  .onActionUpdate((event: GestureEvent) => {
+                    if (event) {
+                      this.scaleValue = this.pinchValue * event.scale
+                      this.pinchX = event.pinchCenterX
+                      this.pinchY = event.pinchCenterY
+                    }
+                  })
+                  .onActionEnd((event: GestureEvent) => {
+                    this.pinchValue = this.scaleValue
+                    console.info('Pinch end')
+                  })
+                )
+
+              /// 动态渲染矩形
+              ForEach(this.rectangles, (rect:Rect,index:number) => {
+                Rect()
+                  .position({x:rect.x,y:rect.y})
+                  .width(rect.width)
+                  .height(rect.height)
+                  .fillOpacity(0)
+                  .stroke('black')
+                    // 在组件上绑定布局位置信息
+                  .translate({ x: this.offsetX, y: this.offsetY, z: 0 })
+                    //拖动
+                  .gesture(
+                    PanGesture(this.panOption)
+                      .onActionStart((event: GestureEvent) =>{
+                        //标记正在拖动，防止点击新建标记框
+                        this.isPaning = true
+                        console.error('开始拖动')
+                      })
+                      .onActionUpdate((event: GestureEvent) => {
+                        if (event) {
+                          this.offsetX = this.positionX + event.offsetX;
+                          this.offsetY = this.positionY + event.offsetY;
+                        }
+                      })
+                      .onActionEnd((event: GestureEvent) => {
+                        this.positionX = this.offsetX;
+                        this.positionY = this.offsetY;
+                        this.rectangles[index].x = this.positionX;
+                        this.rectangles[index].y = this.positionY;
+                        console.error("拖动结束")
+                        this.isPaning = false
+                      })
+                  )
+                    //缩放,2指捏合触发该手势事件
+                  .gesture(
+                    PinchGesture({ fingers: 2 })
+                      .onActionStart((event: GestureEvent) => {
+                        console.info('Pinch start')
+                      })
+                      .onActionUpdate((event: GestureEvent) => {
+                        if (event) {
+                          this.scaleValue = this.pinchValue * event.scale
+                          this.pinchX = event.pinchCenterX
+                          this.pinchY = event.pinchCenterY
+                        }
+                      })
+                      .onActionEnd((event: GestureEvent) => {
+                        this.pinchValue = this.scaleValue
+                        console.info('Pinch end')
+                      })
+                  )
+              });
+            }
           }
           .backgroundColor('red')
           .visibility(this.canvasVisible)
@@ -145,6 +241,37 @@ struct Index {
                 })
               }
             });
+
+          Row(){
+            Button('添加', { type: ButtonType.Capsule })
+              .fontSize(20)
+              .margin(10)
+              .visibility(this.buttonVisibility)
+              .onClick(()=>{
+                if(!this.isPaning){
+                  this.addRect();
+                  console.error('添加成功:'+this.rectangles.length)
+                }
+              })
+
+            Button('保存', { type: ButtonType.Capsule })
+              .fontSize(20)
+              .margin(10)
+              .visibility(this.buttonVisibility)
+              .onClick(()=>{
+                this.isPaning = false
+              })
+
+            Button('退出', { type: ButtonType.Capsule })
+              .fontSize(20)
+              .margin(10)
+              .visibility(this.buttonVisibility)
+              .onClick(()=>{
+                this.buttonVisibility = Visibility.Hidden
+                this.isMarking = false
+              })
+          }
+
 
         }.width('100%')
       }
@@ -240,6 +367,26 @@ struct Index {
     }
     .scrollable(false)
   }
+
+  addRect() {
+    this.rectangles.push({
+      x: 0, // 初始X位置
+      y: 0, // 初始Y位置
+      width: 50, // 初始宽度
+      height: 50, // 初始高度
+    });
+  }
+
+  updateRectPosition(index: number, deltaX: number, deltaY: number) {
+    this.rectangles[index].x += deltaX;
+    this.rectangles[index].y += deltaY;
+  }
+
+  updateRectSize(index: number, scaleX: number, scaleY: number) {
+    this.rectangles[index].width += scaleX;
+    this.rectangles[index].height += scaleY;
+  }
+
 
   // 1 申请权限
   fn1 = async () => {
@@ -357,8 +504,6 @@ struct Index {
   private drawAnnotations(response: DetectionResponse,
     imgWidth: number, drawWidth: number) {
 
-    // 设置检测框
-    // this.context.strokeStyle = 'green';
     this.context.lineWidth = 1;
     //计算缩放率
     let ratio = drawWidth / imgWidth
@@ -557,3 +702,4 @@ struct Index {
   .textAlign(TextAlign.Start)  // 确保文本内容左对齐
   .alignSelf(ItemAlign.Start)  // 确保整个 Text 元素左对齐
 }
+
