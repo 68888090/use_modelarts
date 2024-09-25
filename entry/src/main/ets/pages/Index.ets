@@ -75,14 +75,15 @@ struct Index {
   //手势标记信号
   @State buttonVisibility:Visibility = Visibility.Hidden
   @State isMarking:boolean = false
-  @State isPaning:boolean = false
   //记录方框数组
   @State rectangles: Rect[] = [];
-  @State offsetX: number = 0;
-  @State offsetY: number = 0;
-  @State positionX: number = 0;
-  @State positionY: number = 0;
+  //拖动
+  @State offsetX: number[] = [];
+  @State offsetY: number[] = [];
+  @State positionX: number[] = [];
+  @State positionY: number[] = [];
   private panOption: PanGestureOptions = new PanGestureOptions({ direction: PanDirection.All ,fingers:1})
+  //缩放
   @State boxScaleValue: number = 1
   @State boxPinchValue: number = 1
   @State boxPinchX: number = 0
@@ -147,30 +148,26 @@ struct Index {
                   .width(rect.width)
                   .height(rect.height)
                   .fillOpacity(0)
-                  .stroke('black')
+                  .stroke('#ffc47007')
+                  .strokeWidth(3)
                     // 在组件上绑定布局位置信息
-                  .translate({ x: this.offsetX, y: this.offsetY, z: 0 })
-                    //拖动
+                  .translate({  x: this.offsetX[index], y: this.offsetY[index], z: 0 })// 以组件左上角为坐标原点进行移动
                   .gesture(
                     PanGesture(this.panOption)
                       .onActionStart((event: GestureEvent) =>{
-                        //标记正在拖动，防止点击新建标记框
-                        this.isPaning = true
-                        console.error('开始拖动')
                       })
                       .onActionUpdate((event: GestureEvent) => {
-                        if (event) {
-                          this.offsetX = this.positionX + event.offsetX;
-                          this.offsetY = this.positionY + event.offsetY;
+                        if (event && this.isMarking) {
+                          this.offsetX[index] = this.positionX[index] + event.offsetX
+                          this.offsetY[index] = this.positionY[index] + event.offsetY
                         }
                       })
                       .onActionEnd((event: GestureEvent) => {
-                        this.positionX = this.offsetX;
-                        this.positionY = this.offsetY;
-                        this.rectangles[index].x = this.positionX;
-                        this.rectangles[index].y = this.positionY;
-                        console.error("拖动结束")
-                        this.isPaning = false
+                        if(this.isMarking){
+                          this.positionX[index] = this.offsetX[index]
+                          this.positionY[index] = this.offsetY[index]
+                          console.error("拖动结束")
+                        }
                       })
                   )
                     //缩放,2指捏合触发该手势事件
@@ -242,24 +239,14 @@ struct Index {
               }
             });
 
-          Row(){
+          Row({space:35}){
             Button('添加', { type: ButtonType.Capsule })
               .fontSize(20)
               .margin(10)
               .visibility(this.buttonVisibility)
               .onClick(()=>{
-                if(!this.isPaning){
                   this.addRect();
-                  console.error('添加成功:'+this.rectangles.length)
-                }
-              })
-
-            Button('保存', { type: ButtonType.Capsule })
-              .fontSize(20)
-              .margin(10)
-              .visibility(this.buttonVisibility)
-              .onClick(()=>{
-                this.isPaning = false
+                  console.error('添加成功:'+this.rectangles.length+','+this.positionX.toString())
               })
 
             Button('退出', { type: ButtonType.Capsule })
@@ -271,8 +258,6 @@ struct Index {
                 this.isMarking = false
               })
           }
-
-
         }.width('100%')
       }
       .tabBar('首页')
@@ -375,6 +360,10 @@ struct Index {
       width: 50, // 初始宽度
       height: 50, // 初始高度
     });
+    this.positionX.push(0)
+    this.positionY.push(0)
+    this.offsetX.push(0)
+    this.offsetY.push(0)
   }
 
   updateRectPosition(index: number, deltaX: number, deltaY: number) {
