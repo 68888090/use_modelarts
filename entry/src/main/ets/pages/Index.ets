@@ -21,6 +21,7 @@ import { TestType } from '@ohos/hypium';
 import RequestGPT from '../Utils/requsetGPT'
 import { PermissionManager} from '../Utils/VoicePermission'
 import SpeechRecognizerManager from '../Utils/SpeechRecognizerManager'
+import router from '@ohos.router';
 
 interface FailResponse{
   erno:string,
@@ -268,10 +269,10 @@ struct Index {
           Column() {
             headerText("Hello AI")
 
-            Button("申请权限")
-              .onClick(this.fn1)
-            Button("实时语音识别")
-              .onClick(this.fn2)
+            // Button("申请权限")
+            //   .onClick(this.fn1)
+            // Button("实时语音识别")
+            //   .onClick(this.fn2)
 
             List({space: 15, scroller: this.scroller}) {
               ForEach(this.messageArray, (item: MessageVOImpl) => {
@@ -293,6 +294,15 @@ struct Index {
                 .fillColor(0x000000)
                 .layoutWeight('0.5')
                 .margin({right:5})
+                .onClick(()=>{
+                    console.info(`Succeeded in clicking the 'Next' button.`)
+                    // 跳转到第二页
+                    router.pushUrl({ url: 'pages/index_test_voice' }).then(() => {
+                      console.info('Succeeded in jumping to the second page.')
+                    }).catch((err:Error) => {
+                      console.error(`Failed to jump to the second page,error message is ${err.message}`)
+                    })
+                })
                 // .bindMenu([
                 //   {
                 //     value:'上传当前图片',
@@ -375,7 +385,6 @@ struct Index {
     this.rectangles[index].width += scaleX;
     this.rectangles[index].height += scaleY;
   }
-
 
   // 1 申请权限
   fn1 = async () => {
