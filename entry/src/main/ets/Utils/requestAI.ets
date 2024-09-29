@@ -29,9 +29,10 @@ export class RequestAI {
   copyFilePath:string = ''
   imageuri:string = ''
   exout : PriData.GG =  {width:0,height:0,data:''}
-
-  constructor (filePath: string,url = "https://infer-app-modelarts-cn-southwest-2.myhuaweicloud.com/v1/infers/4aef5d61-24cc-41fd-b1d6-ef307e9852ca",
-    appCode="ab4be939eff64a4a9edb18898ee2277f3c0c97d2c21e420b83d87ef54e3b9113") {
+//API：https://infer-app-modelarts-cn-southwest-2.myhuaweicloud.com/v1/infers/31fb80a1-dd43-4648-b251-7b6e0d9bd2dd
+//   constructor (filePath: string,url = "https://infer-app-modelarts-cn-southwest-2.myhuaweicloud.com/v1/infers/4aef5d61-24cc-41fd-b1d6-ef307e9852ca",
+  constructor (filePath: string,url = "https://infer-app-modelarts-cn-southwest-2.myhuaweicloud.com/v1/infers/31fb80a1-dd43-4648-b251-7b6e0d9bd2dd",
+    appCode="827d6fb7c5154a1ca665927bc35984d43b4677fbe4b34705857bc6d417275ff8") {
     this.url = url
     this.appCode = appCode
     this.filePath = filePath

@@ -287,6 +287,7 @@ struct Index {
             .width('100%')
             .padding({left:15,right:15})
 
+
             Row() {
               Image($r('app.media.yuyin'))
                 .width(36)
@@ -346,11 +347,13 @@ struct Index {
                     this.messageArray.push(new MessageVOImpl(MessageRoleEnum.Mine, this.submitMsg)) // 立刻展示我方对话
                     this.scroller.scrollEdge(Edge.Bottom) // 消息发送后 将列表滚动到底端
                     // 发送http请求
+
                     BaiduHttp.requestChat(this.submitMsg, (responseText: string) => {
                       this.messageArray.push(new MessageVOImpl(MessageRoleEnum.Other, responseText)) // 展示对方对话
                       this.scroller.scrollEdge(Edge.Bottom) // 消息显示后 将列表滚动到底端
                     })
                   })
+
             }
             .width('95%')
           }
@@ -590,6 +593,7 @@ struct Index {
         responseStr = response.data
         imgWidth = response.width
         imgHeight = response.height
+
       }).catch((error: Error) => {
         console.error('Error communicating with AI')
       })
@@ -661,6 +665,7 @@ struct Index {
 
 @Builder function chatLine_other(msg:string) {
   Row({space: 5}) {
+    if(msg==TextTest.dynamic)
     Text(msg).chatLine_text_style_others()
   }
   .alignItems(VerticalAlign.Top)

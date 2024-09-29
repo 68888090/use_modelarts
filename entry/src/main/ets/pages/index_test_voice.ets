@@ -3,7 +3,8 @@ import { speechRecognizer } from '@kit.CoreSpeechKit'
 import { audio } from '@kit.AudioKit'
 import { fileIo } from '@kit.CoreFileKit';
 import { BusinessError } from '@kit.BasicServicesKit';
-
+import BaiduHttp from '../Utils/BaiduHttp';
+import fs from '@ohos.file.fs';
 //初始设置配置
 const TAG = 'AudioCapturerDemo';
 
@@ -31,8 +32,13 @@ let audioCapturerOptions: audio.AudioCapturerOptions = {
 }
 
 let path = getContext().cacheDir;
-let filePath = path + '/StarWars10s-2C-48000-4SW.pcm';
+let filePath = path + '/StarWars10s-2C-48000-4SW11.pcm';
 let file: fileIo.File = fileIo.openSync(filePath, fileIo.OpenMode.READ_WRITE | fileIo.OpenMode.CREATE);
+
+// let file1 = fs.openSync(filePath, fs.OpenMode.READ_WRITE); // 打开文件
+
+let stat = fs.statSync(filePath); // 获取文件状态
+console.error("file1.size:"+stat.size) // 打印文件的长度
 
 let readDataCallback = (buffer: ArrayBuffer) => {
   let options: Options = {
@@ -253,7 +259,13 @@ struct Index {
         if (err) {
           console.error('Capturer stop failed.');
         } else {
+          // audioCapturer?.state.toString()
+          let temp =file.path
           fileIo.close(file);
+          BaiduHttp.requestVoice(temp,(responseText:string)=>{
+            // this.messageArray.push(new MessageVOImpl(MessageRoleEnum.Other, responseText)) // 展示对方对话
+            // this.scroller.scrollEdge(Edge.Bottom)
+          });
           console.info('Capturer stop success.');
         }
       });
