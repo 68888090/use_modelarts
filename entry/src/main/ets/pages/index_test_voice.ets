@@ -253,6 +253,8 @@ struct Index {
         if (err) {
           console.error('Capturer stop failed.');
         } else {
+
+          console.log('success:'+file.name)
           fileIo.close(file);
           console.info('Capturer stop success.');
         }

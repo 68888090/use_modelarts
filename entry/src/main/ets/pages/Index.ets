@@ -22,6 +22,7 @@ import RequestGPT from '../Utils/requsetGPT'
 import { PermissionManager} from '../Utils/VoicePermission'
 import SpeechRecognizerManager from '../Utils/SpeechRecognizerManager'
 import router from '@ohos.router';
+import pan from '@ohos.bluetooth.pan';
 
 interface FailResponse{
   erno:string,
@@ -46,6 +47,23 @@ interface Rect {
   y: number;
   width: number;
   height: number;
+}
+
+export class Rect0 implements Rect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+
+  constructor(x:number,y:number,width:number,height:number) {
+    // this.x = Math.max(Math.min(x,375),0)
+    // this.y = Math.max(Math.min(y,600),0)
+    this.x = Math.min(x,375)
+    this.y = Math.min(y,600)
+    //变化范围在20-200
+    this.width = Math.max(Math.min(width,200),10)
+    this.height = Math.max(Math.min(height,200),10)
+  }
 }
 
 @Entry
@@ -78,17 +96,22 @@ struct Index {
   @State isMarking:boolean = false
   //记录方框数组
   @State rectangles: Rect[] = [];
-  //拖动
+  //矩形标记框拖动
   @State offsetX: number[] = [];
   @State offsetY: number[] = [];
   @State positionX: number[] = [];
   @State positionY: number[] = [];
   private panOption: PanGestureOptions = new PanGestureOptions({ direction: PanDirection.All ,fingers:1})
-  //缩放
-  @State boxScaleValue: number = 1
-  @State boxPinchValue: number = 1
-  @State boxPinchX: number = 0
-  @State boxPinchY: number = 0
+  //拖动角点缩放标志位
+  @State panAction:string = ''
+  //矩形标记框缩放
+  @State xScaleValue: number[] = []
+  @State yScaleValue: number[] = []
+  @State boxPinchValue: number[] = []
+  @State boxPinchX: number[] = []
+  @State boxPinchY: number[] = []
+  @State initPinchX: number[] = []
+  @State initPinchY: number[] = []
 
   build() {
     Tabs({ barPosition: BarPosition.End }) {
@@ -151,44 +174,163 @@ struct Index {
                   .fillOpacity(0)
                   .stroke('#ffc47007')
                   .strokeWidth(3)
-                    // 在组件上绑定布局位置信息
-                  .translate({  x: this.offsetX[index], y: this.offsetY[index], z: 0 })// 以组件左上角为坐标原点进行移动
+                  .onClick((event)=>{
+                    let rec = this.rectangles[index];
+                    console.error("当前大小："+rec.width+','+rec.height)
+                    //当前处于最小状态，难以缩放
+                    //点击即可原地放大
+                    if(rec.width==10 && rect.height==10){
+                      let rec0:Rect = new Rect0(
+                        rec.x,rec.y, 100,100)
+                      this.rectangles[index] = rec0
+                    }
+                  })
+                  .translate({  x: this.offsetX[index], y: this.offsetY[index], z: 0 })
+                  //拖动手势
                   .gesture(
                     PanGesture(this.panOption)
                       .onActionStart((event: GestureEvent) =>{
+                        let threshold = 10;
+                        let x0 = event.fingerList[0].localX;
+                        let y0 = event.fingerList[0].localY;
+                        //左上
+                        if(Math.abs(x0)<=threshold && Math.abs(y0)<=threshold){
+                          this.panAction = 'LT';//left and top
+                        }
+                        //右上
+                        else if(Math.abs(x0-rect.width)<=threshold && Math.abs(y0)<=threshold){
+                          this.panAction = 'RT';//right and top
+                        }
+                        //左下
+                        else if(Math.abs(x0)<=threshold && Math.abs(y0-rect.height)<=threshold){
+                          this.panAction = 'LB';//left and bottom
+                        }
+                        //右下
+                        else if(Math.abs(x0-rect.width)<=threshold && Math.abs(y0-rect.height)<=threshold){
+                          this.panAction = 'RB';//right and bottom
+                        }
+                        //内部
+                        else if(x0>=threshold && x0<=rect.width-threshold
+                          && y0>=threshold && y0<=rect.height-threshold){
+                          this.panAction = 'IN';//ineer
+                        }
                       })
                       .onActionUpdate((event: GestureEvent) => {
                         if (event && this.isMarking) {
-                          this.offsetX[index] = this.positionX[index] + event.offsetX
-                          this.offsetY[index] = this.positionY[index] + event.offsetY
+                          console.error(this.panAction)
+                          //拖动点在内部，整体拖动
+                          if(this.panAction=='IN'){
+                            //以组件左上角为坐标原点偏移
+                            this.offsetX[index] = event.offsetX
+                            this.offsetY[index] = event.offsetY
+                          }
+                          //拖动点在左上角
+                          else if(this.panAction=='LT'){
+                            let newWidth = rect.width-event.offsetX;
+                            let newHeight = rect.height-event.offsetY;
+                            let newX = rect.x+event.offsetX;
+                            let newY = rect.y+event.offsetY;
+                            //保证是在向左或向上移动，且尺寸在要求范围内
+                            if(newX>=(rect.x+rect.width-10)){
+                              newX = rect.x+rect.width-10
+                            }
+                            if(newY>=(rect.y+rect.height-10)){
+                              newY=(rect.y+rect.height-10)
+                            }
+                            if(newWidth>=0 && newWidth<=200 && newHeight>=0 && newHeight<=200){
+                              let rec:Rect = new Rect0(newX,newY, newWidth,newHeight)
+                              console.error('当前未赋值的rec位置：'+rec.x+'，'+rec.y)
+                              this.rectangles[index] = rec
+                            }
+                          }
+                          //拖动点在右上角
+                          else if(this.panAction=='RT'){
+                            let newWidth = rect.width+event.offsetX;
+                            let newHeight = rect.height-event.offsetY;
+                            let newX = rect.x;
+                            let newY = rect.y+event.offsetY;
+                            //保证是在向右或向上移动，且尺寸在要求范围内
+                            if(newX>=10 && newWidth<=10){
+                              newWidth = 10
+                            }
+                            if(newY>=(rect.y+rect.height-10)){
+                              newY=(rect.y+rect.height-10)
+                            }
+                            if(newWidth>=0 && newWidth<=200 && newHeight>=0 && newHeight<=200){
+                              let rec:Rect = new Rect0(
+                                newX,newY, newWidth,newHeight)
+                              this.rectangles[index] = rec
+                            }
+                          }
+                          //拖动点在左下角
+                          else if(this.panAction=='LB'){
+                            let newWidth = rect.width-event.offsetX;
+                            let newHeight = rect.height+event.offsetY;
+                            let newX = rect.x+event.offsetX;
+                            let newY = rect.y;
+                            //保证是在向左或向下移动
+                            if(newX>=(rect.x+rect.width-10)){
+                              newX = rect.x+rect.width-10
+                            }
+                            if(newWidth>=0 && newWidth<=200 && newHeight>=0 && newHeight<=200){
+                              let rec:Rect = new Rect0(
+                                newX,newY, newWidth,newHeight)
+                              this.rectangles[index] = rec
+                            }
+                          }
+                          //拖动点在右下角
+                          else if(this.panAction=='RB') {
+                            let newWidth = rect.width+event.offsetX;
+                            let newHeight = rect.height+event.offsetY;
+                            if(newWidth<=10){
+                              newWidth = 10
+                            }
+                            if(newHeight<=10){
+                              newHeight = 10
+                            }
+                             let rec:Rect = new Rect0(
+                              rect.x,rect.y,
+                              newWidth,newHeight)
+                            this.rectangles[index] = rec
+                          }
                         }
                       })
                       .onActionEnd((event: GestureEvent) => {
-                        if(this.isMarking){
-                          this.positionX[index] = this.offsetX[index]
-                          this.positionY[index] = this.offsetY[index]
+                        if(event && this.isMarking){
+                          //拖动点在内部，整体拖动
+                          if(this.panAction=='IN'){
+                            this.rectangles[index].x += this.offsetX[index];
+                            this.rectangles[index].y += this.offsetY[index];
+                            this.offsetX[index] = 0;
+                            this.offsetY[index] = 0;
+                          }
                           console.error("拖动结束")
                         }
                       })
                   )
-                    //缩放,2指捏合触发该手势事件
-                  .gesture(
-                    PinchGesture({ fingers: 2 })
-                      .onActionStart((event: GestureEvent) => {
-                        console.info('Pinch start')
-                      })
-                      .onActionUpdate((event: GestureEvent) => {
-                        if (event) {
-                          this.scaleValue = this.pinchValue * event.scale
-                          this.pinchX = event.pinchCenterX
-                          this.pinchY = event.pinchCenterY
-                        }
-                      })
-                      .onActionEnd((event: GestureEvent) => {
-                        this.pinchValue = this.scaleValue
-                        console.info('Pinch end')
-                      })
-                  )
+                    //缩放手势（2指捏合）
+                  // .scale({x: this.boxScaleValue[index], y: this.boxScaleValue[index], z: 1})
+                  // .gesture(
+                  //   PinchGesture({ fingers: 2 ,distance:1})
+                  //     .onActionStart((event: GestureEvent) => {
+                  //       console.log('Pinch start')
+                  //       //缩放中心是现在的矩形中心
+                  //       this.initPinchX[index] = rect.x + rect.width/2;
+                  //       this.initPinchY[index] = rect.y + rect.height/2;
+                  //     })
+                  //     .onActionUpdate((event: GestureEvent) => {
+                  //       if (event) {
+                  //         //缩放过程中保持缩放中心不变
+                  //         this.boxScaleValue[index] = this.boxPinchValue[index] * event.scale
+                  //         this.boxPinchX[index] = this.initPinchX[index];
+                  //         this.boxPinchY[index] = this.initPinchY[index];
+                  //       }
+                  //     })
+                  //     .onActionEnd((event: GestureEvent) => {
+                  //       this.boxPinchValue[index] = this.boxScaleValue[index]
+                  //       console.info('Pinch end')
+                  //     })
+                  // )
               });
             }
           }
@@ -240,14 +382,19 @@ struct Index {
               }
             });
 
-          Row({space:35}){
+          Row({space:20}){
+            // //打印拖动状态，用于调试
+            // Text(this.panAction)
+            //   .fontColor('red')
+
             Button('添加', { type: ButtonType.Capsule })
               .fontSize(20)
               .margin(10)
               .visibility(this.buttonVisibility)
               .onClick(()=>{
                   this.addRect();
-                  console.error('添加成功:'+this.rectangles.length+','+this.positionX.toString())
+                  console.error('添加成功:'+this.rectangles.length+','+this.positionX.toString()+','
+                    +this.positionY.toString())
               })
 
             Button('退出', { type: ButtonType.Capsule })
@@ -258,6 +405,14 @@ struct Index {
                 this.buttonVisibility = Visibility.Hidden
                 this.isMarking = false
               })
+
+            Button('清空', { type: ButtonType.Capsule })
+              .fontSize(20)
+              .margin(10)
+              .visibility(this.buttonVisibility)
+              .onClick((event: ClickEvent) => {
+                this.rectangles = []
+            })
           }
         }.width('100%')
       }
@@ -370,10 +525,17 @@ struct Index {
       width: 50, // 初始宽度
       height: 50, // 初始高度
     });
+    //初始化拖动矩阵
     this.positionX.push(0)
     this.positionY.push(0)
     this.offsetX.push(0)
     this.offsetY.push(0)
+    //初始化捏合矩阵
+    this.xScaleValue.push(1);
+    this.yScaleValue.push(1);
+    this.boxPinchValue.push(1);
+    this.boxPinchX.push(0);
+    this.boxPinchY.push(0);
   }
 
   updateRectPosition(index: number, deltaX: number, deltaY: number) {
@@ -386,28 +548,28 @@ struct Index {
     this.rectangles[index].height += scaleY;
   }
 
-  // 1 申请权限
-  fn1 = async () => {
-    // 准备好需要申请的权限 麦克风权限
-    const permissions: Permissions[] = ["ohos.permission.MICROPHONE"]
-    // 检查是否拥有权限
-    const isPermission = await PermissionManager.checkPermission(permissions)
-    if (!isPermission) {
-      //   如果没权限，就主动申请
-      PermissionManager.requestPermission(permissions)
-    }
-  }
-  // 2 实时语音识别
-  fn2 = () => {
-    SpeechRecognizerManager.init(res => {
-      console.log("实时语音识别", JSON.stringify(res))
-      this.Voicetext = res.result
-    })
-  }
+  // // 1 申请权限
+  // fn1 = async () => {
+  //   // 准备好需要申请的权限 麦克风权限
+  //   const permissions: Permissions[] = ["ohos.permission.MICROPHONE"]
+  //   // 检查是否拥有权限
+  //   const isPermission = await PermissionManager.checkPermission(permissions)
+  //   if (!isPermission) {
+  //     //   如果没权限，就主动申请
+  //     PermissionManager.requestPermission(permissions)
+  //   }
+  // }
+  // // 2 实时语音识别
+  // fn2 = () => {
+  //   SpeechRecognizerManager.init(res => {
+  //     console.log("实时语音识别", JSON.stringify(res))
+  //     this.Voicetext = res.result
+  //   })
+  // }
 
   //绘制彩色指示图
   private drawHints() {
-    const names: Array<string> = ["Mouse_bite", "Open_circuit", "Short", "Spur", "Spurious_copper"]
+    const names: Array<string> = ["Mouse_bite", "Open_circuit", "Short", "Spur", "Spurious_copper","手动标记"]
     this.context2.lineWidth = 2;
     this.context2.font = '48px Arial';
     this.context2.fillStyle = 'black';
@@ -438,6 +600,11 @@ struct Index {
     this.context2.fillRect(120, 60, 10, 5);
     this.context2.fillStyle = 'black';
     this.context2.fillText(names[4], 140, 67);
+
+    this.context2.fillStyle = '#ffc47007';
+    this.context2.fillRect(240, 60, 10, 5);
+    this.context2.fillStyle = 'black';
+    this.context2.fillText(names[5], 260, 67);
   }
 
   // 延迟触发绘图
@@ -450,6 +617,7 @@ struct Index {
         //清除加载动画
         this.gifVisible = Visibility.None
         this.canvasVisible = Visibility.Visible
+        console.log('');
         if (await this.drawImage()) {
           if (responseData) { // 绘制标注
             this.drawAnnotations(responseData, imgWidth, 370);
@@ -599,9 +767,9 @@ struct Index {
       console.log("服务器返回的数据:", responseStr);
       //将PostAI返回的字符串数据赋值给当前文件中的全局变量responseStr
       // responseStr = responseArray
-      responseStr =
-        "{\"detection_classes\": [\"Mouse_bite\", \"Mouse_bite\", \"Mouse_bite\", \"Open_circuit\", \"Mouse_bite\", \"Open_circuit\", \"Mouse_bite\", \"Open_circuit\", \"Mouse_bite\", \"Open_circuit\"], \"detection_boxes\": [[578, 646, 604, 672], [559, 609, 584, 640], [407, 264, 424, 303], [1052, 912, 1075, 925], [26, 740, 38, 761], [715, 1351, 743, 1358], [62, 1382, 84, 1397], [714, 1050, 724, 1074], [68, 864, 78, 884], [823, 1099, 834, 1108]], \"detection_scores\": [0.954258, 0.93341, 0.933286, 0.930765, 0.919465, 0.918447, 0.917989, 0.913556, 0.910603, 0.886787]}"
-      // responseStr = "{ \"detection_classes\": [], \"detection_boxes\": [],\"detection_scores\": []}"
+      // responseStr =
+      //   "{\"detection_classes\": [\"Mouse_bite\", \"Mouse_bite\", \"Mouse_bite\", \"Open_circuit\", \"Mouse_bite\", \"Open_circuit\", \"Mouse_bite\", \"Open_circuit\", \"Mouse_bite\", \"Open_circuit\"], \"detection_boxes\": [[578, 646, 604, 672], [559, 609, 584, 640], [407, 264, 424, 303], [1052, 912, 1075, 925], [26, 740, 38, 761], [715, 1351, 743, 1358], [62, 1382, 84, 1397], [714, 1050, 724, 1074], [68, 864, 78, 884], [823, 1099, 834, 1108]], \"detection_scores\": [0.954258, 0.93341, 0.933286, 0.930765, 0.919465, 0.918447, 0.917989, 0.913556, 0.910603, 0.886787]}"
+      // // responseStr = "{ \"detection_classes\": [], \"detection_boxes\": [],\"detection_scores\": []}"
 
       //解析服务器返回的数据为DetectionResponse
         try {
@@ -671,6 +839,7 @@ struct Index {
 @Builder function chatLine_mine(msg:string) {
   Row({space: 5}) {
     Text(msg).chatLine_text_style_mine()
+
   }
   .alignItems(VerticalAlign.Top)
   .justifyContent(FlexAlign.End)
