@@ -5,7 +5,7 @@ import fileio from '@ohos.fileio';
 import fs from '@ohos.file.fs';
 import util from '@ohos.util';
 import common from '@ohos.app.ability.common';
-
+import { buffer } from '@kit.ArkTS';
 
 export interface ChatResponse{
   result:string
@@ -18,6 +18,12 @@ class HttpUtils{
   static voiceUrl:string = 'https://vop.baidu.com/server_api';
   static access_token1:string = '25.50d9d591cbbf591869fe243fe3d29fbe.315360000.2042961219.282335-115738104';
   static access_token2:string = '24.cabad1967ccd5d11f3275835960be382.2592000.1730192869.282335-115738532';
+}
+
+class yuyinclass{
+  err_msg:string = ''
+  err_no:number = 1234
+    sn:string=''
 }
 
 class BaiduHttp{
@@ -42,7 +48,7 @@ class BaiduHttp{
               "messages": [
                 {
                   "role": "user",
-                  "content": question+',回答的简单一点'
+                  "content": question+'\n回答的简单一点。'
                 }
               ]
             },
@@ -88,24 +94,32 @@ class BaiduHttp{
   requestPhoto(){}
   requestVoice(filepath:string, callback: Function):Promise<void>{
     return new Promise((resolve,reject)=>{
+      // filepath = '/data/storage/media/100/local/files/Docs/Download/16k.pcm'
     const  url:string = HttpUtils.voiceUrl
     const  access_token:string =HttpUtils.access_token1
       console.error('filePath:' + filepath) // 打印地址
       console.error(`第一次:${0 - new Date().getTime()}`)
       let file = fs.openSync(filepath, fs.OpenMode.READ_WRITE); // 打开文件
-
       let stat = fs.statSync(filepath); // 获取文件状态
       console.error("stat.size:"+stat.size) // 打印文件的长度
       let buf = new ArrayBuffer(stat.size); // 创建一个ArrayBuffer对象
       let base64 = new  util.Base64Helper(); // 实例化Base64Helper
       let num = fs.readSync(file.fd, buf);   // 读取文件
-      let data = base64.encodeSync(new Uint8Array(buf.slice(0, num))) //  转换成Uint8Array
-      console.error(`data长度:${data.length}`)
-      console.error(`data:${data}`)
-      let textDecoder = util.TextDecoder.create('utf-8', { ignoreBOM : true })
-      let retStr = textDecoder.decodeWithStream( data , {stream: false})   // 可以把Uint8Array转码成base64
-      console.log('dsadfas')
-      console.error(retStr)  // 打印结果
+      let data1 = buffer.from(buf,0,num)
+      let data2 = data1.toString('base64')
+      // let data = base64.encodeSync(new Uint8Array(buf.slice(0, num))) //  转换成Uint8Array
+
+      // let textDecoder = util.TextDecoder.create('utf-8', { ignoreBOM : true })
+      // let retStr = textDecoder.decodeWithStream( data , {stream: false})   // 可以把Uint8Array转码成base64
+      // console.log('dsadfas')
+      // console.error(retStr)  // 打印结果
+      fs.close(file)
+      // file = fs.openSync('C:\\Users\\luyu\\Pictures\\gif图库\\16k.pcm')
+      // stat = fs.statSync(file.path)
+      // console.error(`data长度:${data.length}`)
+      // console.error(`data:${data}`)
+      console.error(`data2长度:${data2.length}`)
+      console.error(`data2:${data2}`)
     try{
       let httpRequest = http.createHttp()
       httpRequest.on('headersReceive', (header) => {
@@ -128,7 +142,7 @@ class BaiduHttp{
             'token':HttpUtils.access_token2,
             'cuid':'3E-C0-13-BA-59-73',
             'len':stat.size,
-            'speech':retStr
+            'speech':data2
           },
 
         },(err:BusinessError,data:http.HttpResponse)=>{
@@ -136,6 +150,12 @@ class BaiduHttp{
           console.error( '数据传输成功')
           //获取返回的result
           responseString = data.result.toString()
+          let temp = JSON.parse(responseString) as yuyinclass
+          if(temp.err_no!=0&&temp.err_msg!='success'){
+            promptAction.showToast({
+              message: '识别失败!'//弹窗内容
+            })
+          }
           console.error('Result:' + responseString);
           console.error('code:' + JSON.stringify(data.responseCode));
           console.error('header:' + JSON.stringify(data.header));
