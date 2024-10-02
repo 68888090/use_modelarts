@@ -7,40 +7,22 @@ import BaiduHttp from '../Utils/BaiduHttp';
 import fs from '@ohos.file.fs';
 import { AudioCapturerDemo } from '../Utils/PlayMusic';
 import { router } from '@kit.ArkUI';
-
 import picker from '@ohos.file.picker';
-
-// import  from '../Utils/PlayMusic'
-//初始设置配置
-
 
 let path = getContext().cacheDir;
 let filePath = path + '/dian1.pcm';
-// let filePath1 = 'C:\\Users\\luyu\\Pictures\\gif图库\\16k.pcm'
-let file: fileIo.File= fileIo.openSync(filePath, fileIo.OpenMode.READ_WRITE | fileIo.OpenMode.CREATE);
+let file: fileIo.File
+let file2: fileIo.File
 
-const fileType = 'pcm'
-// （以时间戳）生成一个新的文件名
-let fileName = Date.now() + '.' + fileType
-let temp =        "file://docs/storage/Users/currentUser/Download/16k.pcm"
-let file3 = fileIo.openSync(temp, fileIo.OpenMode.READ_ONLY)
-let fileTemp = fileIo.openSync(getContext().filesDir+'/'+fileName,fileIo.OpenMode.READ_WRITE|fileIo.OpenMode.CREATE);
-fileIo.copyFileSync(file3.fd, fileTemp.fd)
-fileIo.closeSync(file3)
-fileIo.closeSync(fileTemp)
-
-let file2 = fileIo.openSync(fileTemp.path, fileIo.OpenMode.READ_ONLY)
-
+//播放器配置
 const TAG2 = 'AudioRendererDemo';
-
 class Options2 {
   offset?: number;
   length?: number;
 }
-
 let renderModel: audio.AudioRenderer | undefined = undefined;
 let audioStreamInfo: audio.AudioStreamInfo = {
-  samplingRate: audio.AudioSamplingRate.SAMPLE_RATE_48000, // 采样率
+  samplingRate: audio.AudioSamplingRate.SAMPLE_RATE_16000, // 采样率
   channels: audio.AudioChannel.CHANNEL_2, // 通道
   sampleFormat: audio.AudioSampleFormat.SAMPLE_FORMAT_S16LE, // 采样格式
   encodingType: audio.AudioEncodingType.ENCODING_TYPE_RAW // 编码格式
@@ -53,24 +35,23 @@ let audioRendererOptions: audio.AudioRendererOptions = {
   streamInfo: audioStreamInfo,
   rendererInfo: audioRendererInfo
 }
+let writeDataCallback: (buffer: ArrayBuffer) => void
 
-let writeDataCallback = (buffer: ArrayBuffer) => {
-  let options: Options2 = {
-    offset: bufferSize,
-    length: buffer.byteLength
-  }
-  fileIo.readSync(file2.fd, buffer, options);
-  bufferSize += buffer.byteLength;
-}
+// let writeDataCallback = (buffer: ArrayBuffer) => {
+//   let options: Options2 = {
+//     offset: bufferSize,
+//     length: buffer.byteLength
+//   }
+//   fileIo.readSync(file2.fd, buffer, options);
+//   bufferSize += buffer.byteLength;
+// }
 
-
+//录音器配置
 const TAG = 'AudioCapturerDemo';
-
 class Options {
   offset?: number;
   length?: number;
 }
-
 let context = getContext(this);
 let bufferSize: number = 0;
 let audioCapturer: audio.AudioCapturer | undefined = undefined;
@@ -90,12 +71,10 @@ let audioCapturerOptions: audio.AudioCapturerOptions = {
 
 }
 
-
 let audio1 = new AudioCapturerDemo()
-
-
-let stat = fs.statSync(filePath); // 获取文件状态
-console.error("file1.size:"+stat.size) // 打印文件的长度
+//
+// let stat = fs.statSync(filePath); // 获取文件状态
+// console.error("file1.size:"+stat.size) // 打印文件的长度
 
 let readDataCallback = (buffer: ArrayBuffer) => {
   let options: Options = {
@@ -106,8 +85,6 @@ let readDataCallback = (buffer: ArrayBuffer) => {
   bufferSize += buffer.byteLength;
 }
 
-
-
 @Entry
 @Component
 struct Index {
@@ -117,6 +94,7 @@ struct Index {
         .onClick(() => {
           //注意这里每次都init了一下
           this.start();
+        // this.example();
         })
 
       Button('录音结束')
@@ -127,12 +105,22 @@ struct Index {
       Button('退出录音')
         .onClick(() => {
           this.release();
-          // 跳转到第二页
+          // 跳转到第1页
           // router.pushUrl({ url: 'pages/Index' }).then(() => {
           //   console.info('Succeeded in jumping to the first page.')
           // }).catch((err:Error) => {
           //   console.error(`Failed to jump to the first page,error message is ${err.message}`)
           // })
+        })
+
+      Button('返回主页')
+        .onClick(() => {
+          // 跳转到第1页
+          router.pushUrl({ url: 'pages/Index' }).then(() => {
+            console.info('Succeeded in jumping to the first page.')
+          }).catch((err:Error) => {
+            console.error(`Failed to jump to the first page,error message is ${err.message}`)
+          })
         })
 
       Button('播放录音')
@@ -154,6 +142,11 @@ struct Index {
   async init(): Promise<boolean> {
     console.log('start init success');
     console.log('success:'+'path:'+path+',filePath:'+filePath)
+    try{
+      file= fileIo.openSync(filePath, fileIo.OpenMode.READ_WRITE | fileIo.OpenMode.CREATE);
+    } catch (e) {
+      console.error('error:'+e)
+    }
     let readDataCallback = await this.openFile()
     return new Promise((resolve) => {
       audio.createAudioCapturer(audioCapturerOptions, (err, capturer) => {
@@ -213,6 +206,9 @@ struct Index {
   // 开始一次音频采集
    async start() {
     await this.init();
+     if (!file) {
+       console.error('Failed to open file.');
+     }
     if (audioCapturer !== undefined) {
 
       let stateGroup = [audio.AudioState.STATE_PREPARED, audio.AudioState.STATE_PAUSED, audio.AudioState.STATE_STOPPED];
@@ -284,16 +280,16 @@ struct Index {
             // this.messageArray.push(new MessageVOImpl(MessageRoleEnum.Other, responseText)) // 展示对方对话
             // this.scroller.scrollEdge(Edge.Bottom)
           })
-          //   .then(()=>{
-          //   fs.unlink(filePath, (err) => {
-          //     if (err) {
-          //       console.error("remove file failed with error message: " + err.message + ", error code: " + err.code);
-          //     } else {
-          //       console.error("remove file succeed");
-          //     }
-          //   });
-          // }
-          // );
+            .then(()=>{
+            fs.unlink(filePath, (err) => {
+              if (err) {
+                console.error("remove file failed with error message: " + err.message + ", error code: " + err.code);
+              } else {
+                console.error("remove file succeed");
+              }
+            });
+          }
+          );
 
           console.info('Capturer release success.');
         }
@@ -303,6 +299,39 @@ struct Index {
 
   // 初始化，创建实例，设置监听事件
   async init2() : Promise<boolean> {
+     console.info('start rendering')
+
+    // //测试播放举例音频
+    // try{
+    // const fileType = 'pcm'
+    // // （以时间戳）生成一个新的文件名
+    // let fileName = Date.now() + '.' + fileType
+    // let temp =        "file://docs/storage/Users/currentUser/Download/16k.pcm"
+    // let file3 = fileIo.openSync(temp, fileIo.OpenMode.READ_ONLY)
+    // let fileTemp = fileIo.openSync(getContext().filesDir+'/'+fileName,fileIo.OpenMode.READ_WRITE|fileIo.OpenMode.CREATE);
+    // fileIo.copyFileSync(file3.fd, fileTemp.fd)
+    // let uri = fileTemp.path
+    // fileIo.closeSync(file3)
+    // fileIo.closeSync(fileTemp)
+    //   file2 = fileIo.openSync(uri, fileIo.OpenMode.READ_ONLY)
+    // } catch (e) {
+    //   console.error('error:'+e)
+    // }
+    // console.log('transition end')
+
+    try{
+      file2 = fileIo.openSync(filePath, fileIo.OpenMode.READ_ONLY);
+    } catch (e) {
+      console.error('error:'+e)
+    }
+    writeDataCallback = (buffer: ArrayBuffer) => {
+      let options: Options2 = {
+        offset: bufferSize,
+        length: buffer.byteLength
+      }
+      fileIo.readSync(file2.fd, buffer, options);
+      bufferSize += buffer.byteLength;
+    }
     return new Promise((resolve) =>{
       audio.createAudioRenderer(audioRendererOptions, (err, renderer) => { // 创建AudioRenderer实例
         if (!err) {
@@ -326,9 +355,11 @@ struct Index {
   // 开始一次音频渲染
   async start2() {
   await this.init2();
-  let currentSpeed = renderModel?.getSpeed()
+  let currentSpeed = renderModel?.getVolume()
     console.error('now speed:'+currentSpeed?.toString())
+
   if (renderModel !== undefined) {
+    renderModel?.setSpeed(0.2)
     console.error('Renderer defined!')
     let stateGroup = [audio.AudioState.STATE_PREPARED, audio.AudioState.STATE_PAUSED, audio.AudioState.STATE_STOPPED];
     if (stateGroup.indexOf((renderModel as audio.AudioRenderer).state.valueOf()) === -1) { // 当且仅当状态为prepared、paused和stopped之一时才能启动渲染
