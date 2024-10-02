@@ -92,16 +92,24 @@ class BaiduHttp{
 	}
 
   requestPhoto(){}
+   filepath= ''
   requestVoice(filepath:string, callback: Function):Promise<void>{
     return new Promise((resolve,reject)=>{
-      // filepath = '/data/storage/media/100/local/files/Docs/Download/16k.pcm'
+
+      this.filepath= filepath
+      this.copyPath()
     const  url:string = HttpUtils.voiceUrl
     const  access_token:string =HttpUtils.access_token1
-      console.error('filePath:' + filepath) // 打印地址
+      filepath = this.imageuri
+      console.error('filePath         :' + filepath) // 打印地址
+      let  stat:fs.Stat// 获取文件状态
+      try{
+
+
       console.error(`第一次:${0 - new Date().getTime()}`)
       let file = fs.openSync(filepath, fs.OpenMode.READ_WRITE); // 打开文件
-      let stat = fs.statSync(filepath); // 获取文件状态
-      console.error("stat.size:"+stat.size) // 打印文件的长度
+        stat = fs.statSync(filepath);
+        console.error("stat.size:"+stat.size) // 打印文件的长度
       let buf = new ArrayBuffer(stat.size); // 创建一个ArrayBuffer对象
       let base64 = new  util.Base64Helper(); // 实例化Base64Helper
       let num = fs.readSync(file.fd, buf);   // 读取文件
@@ -172,6 +180,7 @@ class BaiduHttp{
           httpRequest.destroy()
           if(response){
             callback(response.result)
+            resolve()
           }else{
             console.error("解析服务器返回数据结果为null");
           }
@@ -184,12 +193,48 @@ class BaiduHttp{
           reject()
         }
       })
+
+    }catch(e){
+        console.error(e)
+    }
     }catch (err){
       console.error(err)
     }
   })}
+ imageuri=''
+   copyPath(){
 
 
+     const context = getContext(this)
+     const fileType = 'pcm'
+     // （以时间戳）生成一个新的文件名
+     let fileName = Date.now() + '.' + fileType
+     // 通过缓存路径+文件名 拼接出完整的路径
+     let copyFilePath = context.cacheDir + '/' + fileName
+     console.error('copyfilepath'+copyFilePath)
+     // 将文件 拷贝到 临时目录
+
+     // let temp = this.filepath
+     let temp =        "file://docs/storage/Users/currentUser/Download/16.pcm"
+     const file = fs.openSync(temp, fs.OpenMode.READ_ONLY)
+      console.error(file.name)
+
+     let fileTemp = fs.openSync(getContext().filesDir+'/'+fileName,fs.OpenMode.READ_WRITE|fs.OpenMode.CREATE);
+     this.imageuri  = fileTemp.path
+     // this.imageuri  = fileTemp.path
+     // PriData.getImageSize(fileTemp.path).then((temp:PriData.GeneratedTypeLiteralInterface_1)=>{
+     //   this.exout.width = temp.width
+     //   this.exout.height = temp.height
+     // })
+     console.error('filePath '+this.filepath);
+     console.error('filePathtemp '+fileTemp.path);
+
+
+
+     fs.copyFileSync(file.fd, fileTemp.fd)
+     fs.closeSync(file)
+     fs.closeSync(fileTemp)
+   }
 }
 
 export default new BaiduHttp;
