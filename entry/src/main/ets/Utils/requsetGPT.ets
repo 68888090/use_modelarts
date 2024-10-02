@@ -62,7 +62,7 @@ class RequestGPT {
             console.error('code:' + JSON.stringify(data.responseCode));
             // data.header为HTTP响应头，可根据业务需要进行解析
             console.error('header:' + JSON.stringify(data.header));
-            console.error('cookies:' + JSON.stringify(data.cookies)); //
+            console.error('cookies:' + JSON.stringify(data.cookies));
 
             console.log("test:上传结束")
 

@@ -442,6 +442,7 @@ struct Index {
             .width('100%')
             .padding({left:15,right:15})
 
+
             Row() {
               Image($r('app.media.yuyin'))
                 .width(36)
@@ -501,11 +502,15 @@ struct Index {
                     this.messageArray.push(new MessageVOImpl(MessageRoleEnum.Mine, this.submitMsg)) // 立刻展示我方对话
                     this.scroller.scrollEdge(Edge.Bottom) // 消息发送后 将列表滚动到底端
                     // 发送http请求
+                    this.messageArray.push(new MessageVOImpl(MessageRoleEnum.Other, TextTest.dynamic)) // 展示对方对话
+
                     BaiduHttp.requestChat(this.submitMsg, (responseText: string) => {
+                      this.messageArray.pop()
                       this.messageArray.push(new MessageVOImpl(MessageRoleEnum.Other, responseText)) // 展示对方对话
                       this.scroller.scrollEdge(Edge.Bottom) // 消息显示后 将列表滚动到底端
                     })
                   })
+
             }
             .width('95%')
           }
@@ -758,6 +763,7 @@ struct Index {
         responseStr = response.data
         imgWidth = response.width
         imgHeight = response.height
+
       }).catch((error: Error) => {
         console.error('Error communicating with AI')
       })
@@ -769,7 +775,8 @@ struct Index {
       // responseStr = responseArray
       // responseStr =
       //   "{\"detection_classes\": [\"Mouse_bite\", \"Mouse_bite\", \"Mouse_bite\", \"Open_circuit\", \"Mouse_bite\", \"Open_circuit\", \"Mouse_bite\", \"Open_circuit\", \"Mouse_bite\", \"Open_circuit\"], \"detection_boxes\": [[578, 646, 604, 672], [559, 609, 584, 640], [407, 264, 424, 303], [1052, 912, 1075, 925], [26, 740, 38, 761], [715, 1351, 743, 1358], [62, 1382, 84, 1397], [714, 1050, 724, 1074], [68, 864, 78, 884], [823, 1099, 834, 1108]], \"detection_scores\": [0.954258, 0.93341, 0.933286, 0.930765, 0.919465, 0.918447, 0.917989, 0.913556, 0.910603, 0.886787]}"
-      // // responseStr = "{ \"detection_classes\": [], \"detection_boxes\": [],\"detection_scores\": []}"
+
+      // responseStr = "{ \"detection_classes\": [], \"detection_boxes\": [],\"detection_scores\": []}"
 
       //解析服务器返回的数据为DetectionResponse
         try {
@@ -790,6 +797,14 @@ struct Index {
               && originalData.detection_scores.length!=0){
               responseData = originalData
               status = "success"
+              let constString = originalData.detection_classes.toString()+'\n这些关于PCB的问题是由什么工序造成的'
+              this.messageArray.push(new MessageVOImpl(MessageRoleEnum.Mine, '这些关于PCB的问题是由什么工序造成的')) // 立刻展示我方对话
+              this.scroller.scrollEdge(Edge.Bottom) // 消息发送后 将列表滚动到底端
+              // 发送http请求
+              BaiduHttp.requestChat(constString, (responseText: string) => {
+                this.messageArray.push(new MessageVOImpl(MessageRoleEnum.Other, responseText)) // 展示对方对话
+                this.scroller.scrollEdge(Edge.Bottom)
+              })
             }
             //无法解析为有效对象
           }else{
@@ -829,6 +844,15 @@ struct Index {
 
 @Builder function chatLine_other(msg:string) {
   Row({space: 5}) {
+    if(msg==TextTest.dynamic){
+        Text(){
+          ImageSpan($r('app.media.4'))
+            .width('400px')
+            .height('80px')
+            .verticalAlign(ImageSpanAlignment.BOTTOM)
+            // .align(ImageSpanAlignment.CENTER)
+        }.chatLine_text_style_others1()
+    }else
     Text(msg).chatLine_text_style_others()
   }
   .alignItems(VerticalAlign.Top)
@@ -862,6 +886,18 @@ struct Index {
   .fontSize(20)
   .fontColor(Color.Black)
   .width('90%')
+  .lineHeight(25)
+  .backgroundColor('rgba(229, 228, 228, 1.00)')
+  .padding(12)
+  .border({radius: 10})
+  .textAlign(TextAlign.Start)  // 确保文本内容左对齐
+  .alignSelf(ItemAlign.Start)  // 确保整个 Text 元素左对齐
+}
+
+@Extend(Text) function chatLine_text_style_others1() {
+  .fontSize(20)
+  .fontColor(Color.Black)
+  .width('40%')
   .lineHeight(25)
   .backgroundColor('rgba(229, 228, 228, 1.00)')
   .padding(12)

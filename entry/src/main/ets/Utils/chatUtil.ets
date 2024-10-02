@@ -19,6 +19,7 @@ export enum MessageRoleEnum {
 }
 
 export class TextTest {
+  static  readonly  dynamic = 'hjkdshewfvuewahvnoewa'
   static readonly Text: MessageVO[] = [
     {
       role: MessageRoleEnum.Mine,
