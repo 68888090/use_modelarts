@@ -7,6 +7,8 @@ import BaiduHttp from '../Utils/BaiduHttp';
 import fs from '@ohos.file.fs';
 import { AudioCapturerDemo } from '../Utils/PlayMusic';
 
+import picker from '@ohos.file.picker';
+
 // import  from '../Utils/PlayMusic'
 //初始设置配置
 const TAG = 'AudioCapturerDemo';
@@ -36,7 +38,7 @@ let audioCapturerOptions: audio.AudioCapturerOptions = {
 }
 
 let path = getContext().cacheDir;
-let filePath = path + '/dian.pcm';
+let filePath = path + '/dian1.pcm';
 // let filePath1 = 'C:\\Users\\luyu\\Pictures\\gif图库\\16k.pcm'
 let file: fileIo.File
 let audio1 = new AudioCapturerDemo()
@@ -70,6 +72,7 @@ struct Index {
   async init(): Promise<boolean> {
     console.log('start init success');
     console.log('success:'+'path:'+path+',filePath:'+filePath)
+    let readDataCallback = await this.openFile()
     return new Promise((resolve) => {
       audio.createAudioCapturer(audioCapturerOptions, (err, capturer) => {
         if (err) {
@@ -89,6 +92,22 @@ struct Index {
       });
     });
   }
+
+  async  example() {
+  try {
+    let DocumentSelectOptions = new picker.DocumentSelectOptions();
+    let documentPicker = new picker.DocumentViewPicker();
+    documentPicker.select(DocumentSelectOptions, (err, DocumentSelectResult) => {
+      if (err) {
+        console.error('DocumentViewPicker.select failed with err: ' + err);
+        return;
+      }
+      console.info('DocumentViewPicker.select successfully, DocumentSelectResult uri: ' + JSON.stringify(DocumentSelectResult));
+    });
+  } catch (err) {
+    console.error('DocumentViewPicker failed with err: ' + err);
+  }
+}
 
   async openFile(){
      file= fileIo.openSync(filePath, fileIo.OpenMode.READ_WRITE | fileIo.OpenMode.CREATE);
@@ -176,21 +195,24 @@ struct Index {
           let temp =file.path
           fileIo.close(file);
           // pause()
-          fs.unlink(filePath, (err) => {
-
-            if (err) {
-              console.error("remove file failed with error message: " + err.message + ", error code: " + err.code);
-            } else {
-              console.info("remove file succeed");
-            }
-          });
-
-
-
           BaiduHttp.requestVoice(temp,(responseText:string)=>{
             // this.messageArray.push(new MessageVOImpl(MessageRoleEnum.Other, responseText)) // 展示对方对话
             // this.scroller.scrollEdge(Edge.Bottom)
-          });
+          }).then(()=>{
+            fs.unlink(filePath, (err) => {
+              if (err) {
+                console.error("remove file failed with error message: " + err.message + ", error code: " + err.code);
+              } else {
+                console.error("remove file succeed");
+              }
+            });
+          }
+          );
+
+
+
+
+
           console.info('Capturer release success.');
         }
       });
