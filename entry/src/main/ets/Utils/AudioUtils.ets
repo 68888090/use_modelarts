@@ -42,37 +42,13 @@ let filePath = path + '/dian1.pcm';
 // let filePath1 = 'C:\\Users\\luyu\\Pictures\\gif图库\\16k.pcm'
 let file: fileIo.File
 let audio1 = new AudioCapturerDemo()
-@Entry
-@Component
-struct Index {
-  build() {
-    Column({ space: 20 }) {
-      Button('开始录音')
-        .onClick(() => {
-          //注意这里每次都init了一下
-          this.start();
-        })
 
-      Button('录音结束')
-        .onClick(() => {
-          this.stop();
-        })
 
-      Button('退出录音')
-        .onClick(() => {
-          this.release();
-        })
-    }
-    .padding({top:100})
-    .width('100%')
-    .height('100%')
-  }
-
-  // 初始化，创建实例，设置监听事件
-  async init(): Promise<boolean> {
+export class AudioUtils{
+  static  async init(): Promise<boolean> {
     console.log('start init success');
     console.log('success:'+'path:'+path+',filePath:'+filePath)
-    let readDataCallback = await this.openFile()
+    let readDataCallback = await AudioUtils.openFile()
     return new Promise((resolve) => {
       audio.createAudioCapturer(audioCapturerOptions, (err, capturer) => {
         if (err) {
@@ -93,24 +69,24 @@ struct Index {
     });
   }
 
-  async  example() {
-  try {
-    let DocumentSelectOptions = new picker.DocumentSelectOptions();
-    let documentPicker = new picker.DocumentViewPicker();
-    documentPicker.select(DocumentSelectOptions, (err, DocumentSelectResult) => {
-      if (err) {
-        console.error('DocumentViewPicker.select failed with err: ' + err);
-        return;
-      }
-      console.info('DocumentViewPicker.select successfully, DocumentSelectResult uri: ' + JSON.stringify(DocumentSelectResult));
-    });
-  } catch (err) {
-    console.error('DocumentViewPicker failed with err: ' + err);
+  static  async  example() {
+    try {
+      let DocumentSelectOptions = new picker.DocumentSelectOptions();
+      let documentPicker = new picker.DocumentViewPicker();
+      documentPicker.select(DocumentSelectOptions, (err, DocumentSelectResult) => {
+        if (err) {
+          console.error('DocumentViewPicker.select failed with err: ' + err);
+          return;
+        }
+        console.info('DocumentViewPicker.select successfully, DocumentSelectResult uri: ' + JSON.stringify(DocumentSelectResult));
+      });
+    } catch (err) {
+      console.error('DocumentViewPicker failed with err: ' + err);
+    }
   }
-}
 
-  async openFile(){
-     file= fileIo.openSync(filePath, fileIo.OpenMode.READ_WRITE | fileIo.OpenMode.CREATE);
+  static  async openFile(){
+    file= fileIo.openSync(filePath, fileIo.OpenMode.READ_WRITE | fileIo.OpenMode.CREATE);
 
     // let file1 = fs.openSync(filePath, fs.OpenMode.READ_WRITE); // 打开文件
 
@@ -129,8 +105,8 @@ struct Index {
   }
 
   // 开始一次音频采集
-   async start() {
-    await this.init();
+  static  async start() {
+    await AudioUtils.init();
     if (audioCapturer !== undefined) {
 
       let stateGroup = [audio.AudioState.STATE_PREPARED, audio.AudioState.STATE_PAUSED, audio.AudioState.STATE_STOPPED];
@@ -154,7 +130,7 @@ struct Index {
   }
 
   // 停止采集
-  stop() {
+  static  stop() {
     if (audioCapturer !== undefined) {
       // 只有采集器状态为STATE_RUNNING或STATE_PAUSED的时候才可以停止
       if ((audioCapturer as audio.AudioCapturer).state.valueOf() !== audio.AudioState.STATE_RUNNING &&
@@ -171,51 +147,60 @@ struct Index {
           // audioCapturer?.state.toString()
 
           console.info('Capturer stop success.');
-           // start()
+          // start()
         }
       });
     }
   }
 
   // 销毁实例，释放资源
-  release() {
-    if (audioCapturer !== undefined) {
-      // 采集器状态不是STATE_RELEASED或STATE_NEW状态，才能release
-      if ((audioCapturer as audio.AudioCapturer).state.valueOf() === audio.AudioState.STATE_RELEASED ||
-        (audioCapturer as audio.AudioCapturer).state.valueOf() === audio.AudioState.STATE_NEW) {
-        console.info('Capturer already released');
-        return;
-      }
-
-      //释放资源
-      (audioCapturer as audio.AudioCapturer).release((err: BusinessError) => {
-        if (err) {
-          console.error('Capturer release failed.');
-        } else {
-          let temp =file.path
-          fileIo.close(file);
-          // pause()
-          BaiduHttp.requestVoice(temp,(responseText:string)=>{
-            // this.messageArray.push(new MessageVOImpl(MessageRoleEnum.Other, responseText)) // 展示对方对话
-            // this.scroller.scrollEdge(Edge.Bottom)
-          }).then(()=>{
-            fs.unlink(filePath, (err) => {
-              if (err) {
-                console.error("remove file failed with error message: " + err.message + ", error code: " + err.code);
-              } else {
-                console.error("remove file succeed");
-              }
-            });
-          }
-          );
-
-
-
-
-
-          console.info('Capturer release success.');
+ static  async  release():Promise<string> {
+    return new Promise((resolve,reject)=>{
+      if (audioCapturer !== undefined) {
+        // 采集器状态不是STATE_RELEASED或STATE_NEW状态，才能release
+        if ((audioCapturer as audio.AudioCapturer).state.valueOf() === audio.AudioState.STATE_RELEASED ||
+          (audioCapturer as audio.AudioCapturer).state.valueOf() === audio.AudioState.STATE_NEW) {
+          console.info('Capturer already released');
+          reject();
         }
-      });
-    }
+
+        //释放资源
+        (audioCapturer as audio.AudioCapturer).release((err: BusinessError) => {
+          if (err) {
+            console.error('Capturer release failed.');
+          } else {
+            let temp =file.path
+            fileIo.close(file);
+            // pause()
+            let stringTemp = ''
+            BaiduHttp.requestVoice(temp,()=>{
+
+            }).then((responseText:string)=>{
+              stringTemp = responseText
+              fs.unlink(filePath, (err) => {
+                if (err) {
+                  console.error("remove file failed with error message: " + err.message + ", error code: " + err.code);
+                  reject()
+                } else {
+                  console.error("remove file succeed");
+
+
+                }
+
+              });
+              resolve(stringTemp)
+            }
+            );
+
+
+
+
+
+            console.info('Capturer release success.');
+          }
+        });
+      }
+    })
+
   }
 }

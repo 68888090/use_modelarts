@@ -21,9 +21,11 @@ class HttpUtils{
 }
 
 class yuyinclass{
+  corpus_no:string=''
   err_msg:string = ''
   err_no:number = 1234
     sn:string=''
+  result:string = ''
 }
 
 class BaiduHttp{
@@ -93,7 +95,7 @@ class BaiduHttp{
 
   requestPhoto(){}
    filepath= ''
-  requestVoice(filepath:string, callback: Function):Promise<void>{
+  requestVoice(filepath:string, callback: Function):Promise<string>{
     return new Promise((resolve,reject)=>{
 
       this.filepath= filepath
@@ -179,8 +181,8 @@ class BaiduHttp{
           console.error("test:上传结束")
           httpRequest.destroy()
           if(response){
-            callback(response.result)
-            resolve()
+
+            resolve(temp.result)
           }else{
             console.error("解析服务器返回数据结果为null");
           }
