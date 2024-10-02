@@ -211,7 +211,7 @@ struct Index {
   }
 
   // 开始一次音频采集
-  async start() {
+   async start() {
     await this.init();
     if (audioCapturer !== undefined) {
 

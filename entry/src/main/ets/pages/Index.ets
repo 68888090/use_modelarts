@@ -23,6 +23,7 @@ import { PermissionManager} from '../Utils/VoicePermission'
 import SpeechRecognizerManager from '../Utils/SpeechRecognizerManager'
 import router from '@ohos.router';
 import pan from '@ohos.bluetooth.pan';
+import { AudioUtils } from '../Utils/AudioUtils';
 
 interface FailResponse{
   erno:string,
@@ -112,6 +113,7 @@ struct Index {
   @State boxPinchY: number[] = []
   @State initPinchX: number[] = []
   @State initPinchY: number[] = []
+  @State isPressing:boolean = false
 
   build() {
     Tabs({ barPosition: BarPosition.End }) {
@@ -424,6 +426,7 @@ struct Index {
           Column() {
             headerText("Hello AI")
 
+
             // Button("申请权限")
             //   .onClick(this.fn1)
             // Button("实时语音识别")
@@ -443,22 +446,66 @@ struct Index {
             .padding({left:15,right:15})
 
 
-            Row() {
+            Row()
+              {
               Image($r('app.media.yuyin'))
                 .width(36)
                 .height(36)
                 .fillColor(0x000000)
                 .layoutWeight('0.5')
                 .margin({right:5})
-                .onClick(()=>{
-                    console.info(`Succeeded in clicking the 'Next' button.`)
-                    // 跳转到第二页
-                    router.pushUrl({ url: 'pages/index_test_voice' }).then(() => {
-                      console.info('Succeeded in jumping to the second page.')
-                    }).catch((err:Error) => {
-                      console.error(`Failed to jump to the second page,error message is ${err.message}`)
+                .parallelGesture(GestureGroup(GestureMode.Exclusive,
+                  LongPressGesture({ repeat: false })
+                    // 由于repeat设置为true，长按动作存在时会连续触发，触发间隔为duration（默认值500ms）
+                    .onAction((event: GestureEvent) => {
+                      if (event) {
+                        // if(!this.isPressing){
+                          // this.isPressing = true
+                          AudioUtils.start()
+                        promptAction.showToast({
+                          message: '录音开始!'//弹窗内容
+                        })
+                        // }
+
+                      }
                     })
-                })
+                      // 长按动作一结束触发
+                    .onActionEnd(async (event: GestureEvent) => {
+                      promptAction.showToast({
+                        message: '录音结束！'//弹窗内容
+                      })
+                      AudioUtils.stop()
+                      let VoiceText =' '
+                       await AudioUtils.release().then(async (temp:string)=>{
+                         VoiceText = temp
+                         this.messageArray.push(new MessageVOImpl(MessageRoleEnum.Mine, VoiceText.toString())) // 立刻展示我方对话
+
+                         this.messageArray.push(new MessageVOImpl(MessageRoleEnum.Other, TextTest.dynamic)) // 展示对方对话
+                         this.scroller.scrollEdge(Edge.Bottom) // 消息发送后 将列表滚动到底端
+                         // 发送http请求
+                         await BaiduHttp.requestChat(this.submitMsg, (responseText: string) => {
+                           this.messageArray.pop()
+                           this.messageArray.push(new MessageVOImpl(MessageRoleEnum.Other, responseText)) // 展示对方对话
+                           this.scroller.scrollEdge(Edge.Bottom)
+                         })
+                       })
+
+
+                      // this.isPressing = false
+                    }
+                    )
+                )
+                )
+                // .onClick(()=>{
+                //     console.info(`Succeeded in clicking the 'Next' button.`)
+                //     // 跳转到第二页
+                //     router.pushUrl({ url: 'pages/index_test_voice' }).then(() => {
+                //       console.info('Succeeded in jumping to the second page.')
+                //     }).catch((err:Error) => {
+                //       console.error(`Failed to jump to the second page,error message is ${err.message}`)
+                //     })
+                // })
+
                 // .bindMenu([
                 //   {
                 //     value:'上传当前图片',
@@ -487,11 +534,14 @@ struct Index {
                     this.textInputMsg = "" // 点击发送后 输入框置空
                     this.messageArray.push(new MessageVOImpl(MessageRoleEnum.Mine, this.submitMsg)) // 立刻展示我方对话
                     this.scroller.scrollEdge(Edge.Bottom) // 消息发送后 将列表滚动到底端
+                    this.messageArray.push(new MessageVOImpl(MessageRoleEnum.Other, TextTest.dynamic)) // 展示对方对话
                     // 发送http请求
                     await BaiduHttp.requestChat(this.submitMsg, (responseText: string) => {
+                      this.messageArray.pop()
                       this.messageArray.push(new MessageVOImpl(MessageRoleEnum.Other, responseText)) // 展示对方对话
                       this.scroller.scrollEdge(Edge.Bottom)
-                    })}
+                    })
+                  }
                   )
 
                 Button("发送",{type:ButtonType.Capsule})
@@ -511,7 +561,9 @@ struct Index {
                     })
                   })
 
+
             }
+
             .width('95%')
           }
           .width('100%')
@@ -553,24 +605,6 @@ struct Index {
     this.rectangles[index].height += scaleY;
   }
 
-  // // 1 申请权限
-  // fn1 = async () => {
-  //   // 准备好需要申请的权限 麦克风权限
-  //   const permissions: Permissions[] = ["ohos.permission.MICROPHONE"]
-  //   // 检查是否拥有权限
-  //   const isPermission = await PermissionManager.checkPermission(permissions)
-  //   if (!isPermission) {
-  //     //   如果没权限，就主动申请
-  //     PermissionManager.requestPermission(permissions)
-  //   }
-  // }
-  // // 2 实时语音识别
-  // fn2 = () => {
-  //   SpeechRecognizerManager.init(res => {
-  //     console.log("实时语音识别", JSON.stringify(res))
-  //     this.Voicetext = res.result
-  //   })
-  // }
 
   //绘制彩色指示图
   private drawHints() {
@@ -798,8 +832,10 @@ struct Index {
               let constString = originalData.detection_classes.toString()+'\n这些关于PCB的问题是由什么工序造成的'
               this.messageArray.push(new MessageVOImpl(MessageRoleEnum.Mine, '这些关于PCB的问题是由什么工序造成的')) // 立刻展示我方对话
               this.scroller.scrollEdge(Edge.Bottom) // 消息发送后 将列表滚动到底端
+              this.messageArray.push(new MessageVOImpl(MessageRoleEnum.Other, TextTest.dynamic)) // 展示对方对话
               // 发送http请求
               BaiduHttp.requestChat(constString, (responseText: string) => {
+                this.messageArray.pop()
                 this.messageArray.push(new MessageVOImpl(MessageRoleEnum.Other, responseText)) // 展示对方对话
                 this.scroller.scrollEdge(Edge.Bottom)
               })
