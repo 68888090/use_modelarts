@@ -223,16 +223,9 @@ class BaiduHttp{
 
      let fileTemp = fs.openSync(getContext().filesDir+'/'+fileName,fs.OpenMode.READ_WRITE|fs.OpenMode.CREATE);
      this.imageuri  = fileTemp.path
-     // this.imageuri  = fileTemp.path
-     // PriData.getImageSize(fileTemp.path).then((temp:PriData.GeneratedTypeLiteralInterface_1)=>{
-     //   this.exout.width = temp.width
-     //   this.exout.height = temp.height
-     // })
+
      console.error('filePath '+this.filepath);
      console.error('filePathtemp '+fileTemp.path);
-
-
-
      fs.copyFileSync(file.fd, fileTemp.fd)
      fs.closeSync(file)
      fs.closeSync(fileTemp)
