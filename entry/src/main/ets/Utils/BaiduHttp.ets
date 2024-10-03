@@ -16,8 +16,10 @@ class HttpUtils{
   static chatUrl:string='https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions_pro?access_token=';
   static access_token:string='24.a884f4b5f161d01456c6788473c8b7f0.2592000.1728384324.282335-115507853';
   static voiceUrl:string = 'https://vop.baidu.com/server_api';
+  // static voiceUrl:string = 'https://vop.baidu.com/pro_api';
   static access_token1:string = '25.50d9d591cbbf591869fe243fe3d29fbe.315360000.2042961219.282335-115738104';
   static access_token2:string = '24.cabad1967ccd5d11f3275835960be382.2592000.1730192869.282335-115738532';
+  static access_token3:string = '24.167c3a1f0e708ebcaf622d66e3ee2c6e.2592000.1730465464.282335-115738532';
 }
 
 class yuyinclass{
@@ -50,7 +52,7 @@ class BaiduHttp{
               "messages": [
                 {
                   "role": "user",
-                  "content": question+'\n回答的简单一点。'
+                  "content": question+'\n注意，回答的简洁一点。直接给我问题的答案就可以，避免不必要的语句。'
                 }
               ]
             },
@@ -95,6 +97,8 @@ class BaiduHttp{
 
   requestPhoto(){}
    filepath= ''
+
+
   requestVoice(filepath:string, callback: Function):Promise<string>{
     return new Promise((resolve,reject)=>{
 
@@ -103,11 +107,9 @@ class BaiduHttp{
     const  url:string = HttpUtils.voiceUrl
     const  access_token:string =HttpUtils.access_token1
       filepath = this.imageuri
-      console.error('filePath         :' + filepath) // 打印地址
+      console.error('filePath :' + filepath) // 打印地址
       let  stat:fs.Stat// 获取文件状态
       try{
-
-
       console.error(`第一次:${0 - new Date().getTime()}`)
       let file = fs.openSync(filepath, fs.OpenMode.READ_WRITE); // 打开文件
         stat = fs.statSync(filepath);
@@ -149,7 +151,7 @@ class BaiduHttp{
             'rate':16000,
             'dev_pid':1537,
             'channel':1,
-            'token':HttpUtils.access_token2,
+            'token':HttpUtils.access_token3,
             'cuid':'3E-C0-13-BA-59-73',
             'len':stat.size,
             'speech':data2
@@ -204,8 +206,8 @@ class BaiduHttp{
     }
   })}
  imageuri=''
-   copyPath(){
 
+   copyPath(){
 
      const context = getContext(this)
      const fileType = 'pcm'
@@ -216,8 +218,8 @@ class BaiduHttp{
      console.error('copyfilepath'+copyFilePath)
      // 将文件 拷贝到 临时目录
 
-     // let temp = this.filepath
-     let temp =        "file://docs/storage/Users/currentUser/Download/16.pcm"
+     let temp = this.filepath
+     // let temp =        "file://docs/storage/Users/currentUser/Download/16.pcm"
      const file = fs.openSync(temp, fs.OpenMode.READ_ONLY)
       console.error(file.name)
 

@@ -24,6 +24,7 @@ import SpeechRecognizerManager from '../Utils/SpeechRecognizerManager'
 import router from '@ohos.router';
 import pan from '@ohos.bluetooth.pan';
 import { AudioUtils } from '../Utils/AudioUtils';
+import { AudioUtils2 } from '../Utils/AudioUtil2';
 
 interface FailResponse{
   erno:string,
@@ -426,12 +427,6 @@ struct Index {
           Column() {
             headerText("Hello AI")
 
-
-            // Button("申请权限")
-            //   .onClick(this.fn1)
-            // Button("实时语音识别")
-            //   .onClick(this.fn2)
-
             List({space: 15, scroller: this.scroller}) {
               ForEach(this.messageArray, (item: MessageVOImpl) => {
                 if (item.role === MessageRoleEnum.Mine) {
@@ -444,7 +439,6 @@ struct Index {
             .height('80%')
             .width('100%')
             .padding({left:15,right:15})
-
 
             Row()
               {
@@ -461,12 +455,11 @@ struct Index {
                       if (event) {
                         // if(!this.isPressing){
                           // this.isPressing = true
-                          AudioUtils.start()
+                          AudioUtils2.start()
                         promptAction.showToast({
                           message: '录音开始!'//弹窗内容
                         })
                         // }
-
                       }
                     })
                       // 长按动作一结束触发
@@ -474,12 +467,12 @@ struct Index {
                       promptAction.showToast({
                         message: '录音结束！'//弹窗内容
                       })
-                      AudioUtils.stop()
+                      AudioUtils2.stop()
                       let VoiceText =' '
-                       await AudioUtils.release().then(async (temp:string)=>{
+                       await AudioUtils2.release().then(async (temp:string)=>{
                          VoiceText = temp
+                         this.submitMsg = temp
                          this.messageArray.push(new MessageVOImpl(MessageRoleEnum.Mine, VoiceText.toString())) // 立刻展示我方对话
-
                          this.messageArray.push(new MessageVOImpl(MessageRoleEnum.Other, TextTest.dynamic)) // 展示对方对话
                          this.scroller.scrollEdge(Edge.Bottom) // 消息发送后 将列表滚动到底端
                          // 发送http请求
@@ -489,8 +482,6 @@ struct Index {
                            this.scroller.scrollEdge(Edge.Bottom)
                          })
                        })
-
-
                       // this.isPressing = false
                     }
                     )
@@ -505,21 +496,6 @@ struct Index {
                 //       console.error(`Failed to jump to the second page,error message is ${err.message}`)
                 //     })
                 // })
-
-                // .bindMenu([
-                //   {
-                //     value:'上传当前图片',
-                //     action: () => {
-                //       console.info('handle Menu1 select')
-                //     }
-                //   },
-                //   {
-                //     value:'语音输入',
-                //     action: () => {
-                //       console.info('handle Menu1 select')
-                //     }
-                //   }
-                // ])
 
                 TextInput({placeholder: '有问题尽管问我~', text: this.textInputMsg})
                   .height(50)
@@ -560,8 +536,6 @@ struct Index {
                       this.scroller.scrollEdge(Edge.Bottom) // 消息显示后 将列表滚动到底端
                     })
                   })
-
-
             }
 
             .width('95%')
