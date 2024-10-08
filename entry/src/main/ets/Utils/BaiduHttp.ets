@@ -14,7 +14,8 @@ export let responseString : string
 
 class HttpUtils{
   static chatUrl:string='https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions_pro?access_token=';
-  static access_token:string='24.a884f4b5f161d01456c6788473c8b7f0.2592000.1728384324.282335-115507853';
+  //2024.10.08修改，有效期30days
+  static access_token:string='24.0c5b7443332636aa3883e9206382f36c.2592000.1730987908.282335-115507853';
   static voiceUrl:string = 'https://vop.baidu.com/server_api';
   // static voiceUrl:string = 'https://vop.baidu.com/pro_api';
   static access_token1:string = '25.50d9d591cbbf591869fe243fe3d29fbe.315360000.2042961219.282335-115738104';
