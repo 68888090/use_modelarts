@@ -24,8 +24,8 @@ let renderModel: audio.AudioRenderer | undefined = undefined;
 let audioStreamInfo: audio.AudioStreamInfo = {
   samplingRate: audio.AudioSamplingRate.SAMPLE_RATE_16000, // 采样率
   channels: audio.AudioChannel.CHANNEL_2, // 通道
-  sampleFormat: audio.AudioSampleFormat.SAMPLE_FORMAT_S16LE, // 采样格式
-  encodingType: audio.AudioEncodingType.ENCODING_TYPE_RAW // 编码格式
+  sampleFormat: audio.AudioSampleFormat.SAMPLE_FORMAT_INVALID, // 采样格式
+  encodingType: audio.AudioEncodingType.ENCODING_TYPE_INVALID // 编码格式
 }
 let audioRendererInfo: audio.AudioRendererInfo = {
   usage: audio.StreamUsage.STREAM_USAGE_MUSIC, // 音频流使用类型
@@ -281,13 +281,13 @@ struct Index {
             // this.scroller.scrollEdge(Edge.Bottom)
           })
             .then(()=>{
-            fs.unlink(filePath, (err) => {
-              if (err) {
-                console.error("remove file failed with error message: " + err.message + ", error code: " + err.code);
-              } else {
-                console.error("remove file succeed");
-              }
-            });
+            // fs.unlink(filePath, (err) => {
+            //   if (err) {
+            //     console.error("remove file failed with error message: " + err.message + ", error code: " + err.code);
+            //   } else {
+            //     console.error("remove file succeed");
+            //   }
+            // });
           }
           );
 
@@ -301,7 +301,7 @@ struct Index {
   async init2() : Promise<boolean> {
      console.info('start rendering')
 
-    // //测试播放举例音频
+    //测试播放举例音频
     // try{
     // const fileType = 'pcm'
     // // （以时间戳）生成一个新的文件名
@@ -317,9 +317,10 @@ struct Index {
     // } catch (e) {
     //   console.error('error:'+e)
     // }
-    // console.log('transition end')
-
+    console.log('transition end')
+    //
     try{
+
       file2 = fileIo.openSync(filePath, fileIo.OpenMode.READ_ONLY);
     } catch (e) {
       console.error('error:'+e)
@@ -359,7 +360,7 @@ struct Index {
     console.error('now speed:'+currentSpeed?.toString())
 
   if (renderModel !== undefined) {
-    renderModel?.setSpeed(0.2)
+    renderModel?.setSpeed(1)
     console.error('Renderer defined!')
     let stateGroup = [audio.AudioState.STATE_PREPARED, audio.AudioState.STATE_PAUSED, audio.AudioState.STATE_STOPPED];
     if (stateGroup.indexOf((renderModel as audio.AudioRenderer).state.valueOf()) === -1) { // 当且仅当状态为prepared、paused和stopped之一时才能启动渲染

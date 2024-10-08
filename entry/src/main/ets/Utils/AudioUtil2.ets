@@ -23,12 +23,12 @@ let context = getContext(this);
 let bufferSize: number = 0;
 let audioCapturer: audio.AudioCapturer | undefined = undefined;
 let audioCapturerInfo: audio.AudioCapturerInfo = {
-  source: audio.SourceType.SOURCE_TYPE_MIC, // 音源类型
+  source: audio.SourceType.SOURCE_TYPE_VOICE_RECOGNITION, // 音源类型
   capturerFlags: 0 // 音频采集器标志
 }
 let audioStreamInfo: audio.AudioStreamInfo = {
   samplingRate: audio.AudioSamplingRate.SAMPLE_RATE_16000, // 采样率
-  channels: audio.AudioChannel.CHANNEL_2, // 通道
+  channels: audio.AudioChannel.CHANNEL_1, // 通道
   sampleFormat: audio.AudioSampleFormat.SAMPLE_FORMAT_S16LE, // 采样格式
   encodingType: audio.AudioEncodingType.ENCODING_TYPE_RAW // 编码格式
 }
