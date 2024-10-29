@@ -14,13 +14,16 @@ export let responseString : string
 
 class HttpUtils{
   static chatUrl:string='https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions_pro?access_token=';
-  //2024.10.08修改，有效期30days
-  static access_token:string='24.0c5b7443332636aa3883e9206382f36c.2592000.1730987908.282335-115507853';
   static voiceUrl:string = 'https://vop.baidu.com/server_api';
+  //2024.10.29更新，有效期30days
+  static access_token:string='24.57c26090d0ca750ae2dbb6325e6b5266.2592000.1732803046.282335-115507853';
+  //chat access_token
+  static access_token3:string = '24.733513aac2a76b5b5a84e759fca99a72.2592000.1732803091.282335-115738532';
+  //voice access_token
+
   // static voiceUrl:string = 'https://vop.baidu.com/pro_api';
-  static access_token1:string = '25.50d9d591cbbf591869fe243fe3d29fbe.315360000.2042961219.282335-115738104';
-  static access_token2:string = '24.cabad1967ccd5d11f3275835960be382.2592000.1730192869.282335-115738532';
-  static access_token3:string = '24.167c3a1f0e708ebcaf622d66e3ee2c6e.2592000.1730465464.282335-115738532';
+  // static access_token1:string = '25.50d9d591cbbf591869fe243fe3d29fbe.315360000.2042961219.282335-115738104';
+  // static access_token2:string = '24.cabad1967ccd5d11f3275835960be382.2592000.1730192869.282335-115738532';
 }
 
 class yuyinclass{
@@ -106,7 +109,7 @@ class BaiduHttp{
       this.filepath= filepath
       this.copyPath()
     const  url:string = HttpUtils.voiceUrl
-    const  access_token:string =HttpUtils.access_token1
+    // const  access_token:string =HttpUtils.access_token
       filepath = this.imageuri
       console.error('filePath :' + filepath) // 打印地址
       let  stat:fs.Stat// 获取文件状态
